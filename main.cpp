@@ -21,8 +21,8 @@
 #include <iostream>
 #include <string>
 
-// Percolation header
-#include "perc.hpp"
+// Include header
+#include "main.hpp"
 
 // Option parser
 #include "optionparser/ezOptionParser.hpp"
@@ -97,7 +97,7 @@ int main(int argc, const char * argv[]) {
     return 1;
   }
 
-  // Run the hexagonal lattice
+  // Generate the lattice and run the walks
   Percolation<int32_t> *sim = new Percolation<int32_t>();
   sim->Initialize(size, fraction, seed, lattice, walks, length);
   sim->Run();

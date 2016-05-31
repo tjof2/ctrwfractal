@@ -12,8 +12,8 @@
 
 ***************************************************************************/
 
-#ifndef PERC_H
-#define PERC_H
+#ifndef MAIN_H
+#define MAIN_H
 
 // C++ headers
 #include <chrono>
