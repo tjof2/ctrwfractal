@@ -102,7 +102,7 @@ public:
     lattice_coordinates.set_size(3, N);
     walks.set_size(walk_length);
     true_walks.set_size(true_length);
-    walks_coordinates.set_size(2, walk_length, N_walks);
+    walks_coordinates.set_size(2, true_length, N_walks);
     ctrwTimes.set_size(walk_length);
 
     // Seed the generator
@@ -228,7 +228,7 @@ private:
     std::exponential_distribution<double> ExponentialDistribution(beta);
 
     arma::uvec boundarydetect(walk_length);
-    
+
     // Simulate a random walk on the lattice
     for (int i = 0; i < N_walks; i++) {
       bool ok_start = false;
