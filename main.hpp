@@ -102,6 +102,7 @@ public:
     lattice_coordinates.set_size(3, N);
     walks.set_size(walk_length);
     walks_coordinates.set_size(2, walk_length, N_walks);
+    ctrwTimes.set_size(walk_length);
 
     // Seed the generator
     RNG = SeedRNG(rngseed);
@@ -171,6 +172,7 @@ private:
   // Arrays to hold information
   arma::Col<T> lattice, occupation, walks;
   arma::Mat<T> nn;
+  arma::vec ctrwTimes;
   arma::mat lattice_coordinates;
   arma::cube walks_coordinates;
 
@@ -224,6 +226,8 @@ private:
     std::uniform_int_distribution<T> RandSample(0, static_cast<int>(latticeones.n_elem) - 1);
 
     arma::uvec boundarydetect(walk_length);
+
+    std::exponential_distribution<double> ExponentialDistribution(beta);
 
     // Simulate a random walk on the lattice
     for (int i = 0; i < N_walks; i++) {
@@ -285,7 +289,21 @@ private:
         }
       }
 
-      // Now convert the walk to the coordinate system
+      // Draw 1000 CTRW variates from exponential distribution
+      ctrwTimes.imbue( [&]() { return ExponentialDistribution(RNG); } );
+
+      // Transform to Pareto distribution and accumulate
+      ctrwTimes = arma::cumsum(arma::exp(ctrwTimes));
+
+      // Only keep times within range [0, true_length]
+      arma::uvec temp_time_boundary = arma::find(ctrwTimes >= true_length, 1, "first");
+      int time_boundary = temp_time_boundary(0);
+      ctrwTimes = ctrwTimes(arma::span(0,time_boundary));
+      ctrwTimes(time_boundary) = true_length;
+
+      
+
+      // Finally convert the walk to the coordinate system
       int nx_cell = 0;
       int ny_cell = 0;
       for (int nstep = 0; nstep < walk_length; nstep++) {
@@ -301,10 +319,10 @@ private:
             break;
           case 4:
             nx_cell--;
-            break;
+              break;
           case 0:
           default:
-            break;
+              break;
         }
         walks_coordinates(0, nstep, i) = lattice_coordinates(0, walks(nstep))
                                           + nx_cell * unit_cell(0);
