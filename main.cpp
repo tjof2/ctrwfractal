@@ -49,12 +49,14 @@ int main(int argc, const char * argv[]) {
 		"--help", 						// Flag token.
 		"--usage" 						// Flag token.
 	);
-	opt.add("hexagonal", 0, 1, 0, "Filename for output", "-o", "-output");
-  opt.add("Hexagonal", 0, 1, 0, "Lattice type", "-l", "-lattice");
+	opt.add("honeycomb", 0, 1, 0, "Filename for output", "-o", "-output");
+  opt.add("Honeycomb", 0, 1, 0, "Lattice type", "-l", "-lattice");
   opt.add("0.5", 0,	1, 0, "Percolation fraction", "-f", "-fraction");
 	opt.add("64", 0, 1, 0, "Dimensions of lattice", "-d", "-dim");
   opt.add("10", 0, 1, 0, "Simulate 100 random walks on this lattice", "-w", "-walks");
   opt.add("1000", 0, 1, 0, "Length of random walks", "-n", "-nsteps");
+  opt.add("1", 0, 1, 0, "Power-law beta", "-b", "-beta");
+  opt.add("1000", 0, 1, 0, "Actual length of walks", "-t", "-truelength");
 	opt.add("0", 0,	1, 0, "Random seed", "-s", "-seed");
 
 	// Check for errors
@@ -80,16 +82,18 @@ int main(int argc, const char * argv[]) {
 	}
 
   std::string outfile, lattice;
-  double fraction;
-  int seed, size, walks, length;
+  double fraction, beta;
+  int seed, size, walks, length, truelength;
 
   opt.get("-output")->getString(outfile);
   opt.get("-lattice")->getString(lattice);
   opt.get("-fraction")->getDouble(fraction);
+  opt.get("-beta")->getDouble(beta);
   opt.get("-dim")->getInt(size);
   opt.get("-seed")->getInt(seed);
   opt.get("-walks")->getInt(walks);
   opt.get("-nsteps")->getInt(length);
+  opt.get("-truelength")->getInt(truelength);
 
   // Check for argument errors
   if (fraction == 0. || fraction > 1.) {
@@ -99,7 +103,7 @@ int main(int argc, const char * argv[]) {
 
   // Generate the lattice and run the walks
   Percolation<int32_t> *sim = new Percolation<int32_t>();
-  sim->Initialize(size, fraction, seed, lattice, walks, length);
+  sim->Initialize(size, fraction, seed, lattice, walks, length, beta, truelength);
   sim->Run();
   sim->Save(outfile);
 

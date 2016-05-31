@@ -39,20 +39,24 @@ public:
                   int rngseed,
                   std::string type,
                   int numwalks,
-                  int nsteps) {
+                  int nsteps,
+                  double userbeta,
+                  int truelength) {
     // Initialize threshold
     threshold = pc;
 
     // Number of random walks (>0)
     N_walks = numwalks;
     walk_length = nsteps;
+    beta = userbeta;
+    true_length = truelength;
 
     // Get dimensions
     L = size;
 
     // Check mode
     std::cout<<"Searching neighbours...    ";
-    if (type.compare("Hexagonal") == 0) {
+    if (type.compare("Honeycomb") == 0) {
       latticemode = 1;
       nearest = 3;
       N = L * L * 4;
@@ -64,7 +68,7 @@ public:
         lastrow(i-1) = L/2 * (4*i + std::pow(-1, i + 1) - 1) - 1;
       }
       time_start = GetTime();
-      BoundariesHexagonal();
+      BoundariesHoneycomb();
       time_end = GetTime();
       run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
         time_end - time_start).count()/1E6);
@@ -85,7 +89,7 @@ public:
     else {
       std::cout << "!!! WARNING: "
                 << type.c_str()
-                << " must be either 'Square' or 'Hexagonal' !!!"
+                << " must be either 'Square' or 'Honeycomb' !!!"
                 << std::endl;
     }
 
@@ -159,7 +163,7 @@ public:
 
 private:
   // Dimensions
-  int L, N, EMPTY, latticemode, N_walks, walk_length;
+  int L, N, EMPTY, latticemode, N_walks, walk_length, true_length;
 
   // Number of nearest neighbours
   int nearest;
@@ -172,11 +176,14 @@ private:
 
   arma::colvec unit_cell;
 
-  // Hexagonal lattice only - check for first or last row
+  // Honeycomb lattice only - check for first or last row
   arma::Col<T> firstrow, lastrow;
 
   // Percolation threshold
   double threshold;
+
+  // Power-law beta
+  double beta;
 
   const double sqrt3 = 1.7320508075688772;
 
@@ -208,48 +215,6 @@ private:
       pcg_extras::seed_seq_from<std::random_device> seed_source;
       return pcg64(seed_source);
     }
-  }
-
-  void BuildLattice() {
-    // Populate the hexagonal lattice coordinates
-    if (latticemode == 1) {
-      double xx, yy;
-      int count = 0;
-      int cur_col = 0;
-      for (int i = 0; i < 4*L; i++) {
-        for (int j = L - 1; j >= 0; j--) {
-          cur_col = i % 4;
-          switch (cur_col) {
-              case 0:
-              default:
-                xx = i / 4 * 3;
-                yy = j * sqrt3 + sqrt3/2;
-                break;
-              case 1:
-                xx = i / 4 * 3 + 1./2;
-                yy = j * sqrt3;
-                break;
-              case 2:
-                xx = i / 4 * 3 + 3./2;
-                yy = j * sqrt3;
-                break;
-              case 3:
-                xx = i / 4 * 3 + 2.;
-                yy = j * sqrt3 + sqrt3/2;
-                break;
-          }
-          lattice_coordinates(0, count) = xx;
-          lattice_coordinates(1, count) = yy;
-          lattice_coordinates(2, count) = (lattice(count) == EMPTY) ? 0 : 1;
-          count++;
-        }
-      }
-    }
-    // Get unit cell size
-    unit_cell = arma::max(lattice_coordinates, 1);
-    unit_cell(0) += 3/2;
-    unit_cell(1) += sqrt3/2;
-    return;
   }
 
   void RandomWalks() {
@@ -350,6 +315,48 @@ private:
     return;
   }
 
+  void BuildLattice() {
+    // Populate the honeycomb lattice coordinates
+    if (latticemode == 1) {
+      double xx, yy;
+      int count = 0;
+      int cur_col = 0;
+      for (int i = 0; i < 4*L; i++) {
+        for (int j = L - 1; j >= 0; j--) {
+          cur_col = i % 4;
+          switch (cur_col) {
+              case 0:
+              default:
+                xx = i / 4 * 3;
+                yy = j * sqrt3 + sqrt3/2;
+                break;
+              case 1:
+                xx = i / 4 * 3 + 1./2;
+                yy = j * sqrt3;
+                break;
+              case 2:
+                xx = i / 4 * 3 + 3./2;
+                yy = j * sqrt3;
+                break;
+              case 3:
+                xx = i / 4 * 3 + 2.;
+                yy = j * sqrt3 + sqrt3/2;
+                break;
+          }
+          lattice_coordinates(0, count) = xx;
+          lattice_coordinates(1, count) = yy;
+          lattice_coordinates(2, count) = (lattice(count) == EMPTY) ? 0 : 1;
+          count++;
+        }
+      }
+    }
+    // Get unit cell size
+    unit_cell = arma::max(lattice_coordinates, 1);
+    unit_cell(0) += 3/2;
+    unit_cell(1) += sqrt3/2;
+    return;
+  }
+
   // Check occupied neighbours of a point
   arma::Col<T> GetOccupiedNeighbours(int pos) {
     arma::Col<T> neighbours = nn.col(pos);
@@ -423,7 +430,7 @@ private:
 
   // Nearest neighbours of a graphene lattice with
   // periodic boundary conditions
-  void BoundariesHexagonal() {
+  void BoundariesHoneycomb() {
     int cur_col = 0;
     int count = 0;
     for (int i = 0; i < N; i++) {
