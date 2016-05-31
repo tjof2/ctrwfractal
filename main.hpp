@@ -101,6 +101,7 @@ public:
     occupation.set_size(N);
     lattice_coordinates.set_size(3, N);
     walks.set_size(walk_length);
+    true_walks.set_size(true_length);
     walks_coordinates.set_size(2, walk_length, N_walks);
     ctrwTimes.set_size(walk_length);
 
@@ -170,7 +171,7 @@ private:
   int nearest;
 
   // Arrays to hold information
-  arma::Col<T> lattice, occupation, walks;
+  arma::Col<T> lattice, occupation, walks, true_walks;
   arma::Mat<T> nn;
   arma::vec ctrwTimes;
   arma::mat lattice_coordinates;
@@ -224,11 +225,10 @@ private:
     arma::Col<T> latticeones = arma::regspace<arma::Col<T>>(0, N - 1);
     latticeones = latticeones.elem( find(lattice != EMPTY) );
     std::uniform_int_distribution<T> RandSample(0, static_cast<int>(latticeones.n_elem) - 1);
-
-    arma::uvec boundarydetect(walk_length);
-
     std::exponential_distribution<double> ExponentialDistribution(beta);
 
+    arma::uvec boundarydetect(walk_length);
+    
     // Simulate a random walk on the lattice
     for (int i = 0; i < N_walks; i++) {
       bool ok_start = false;
@@ -289,7 +289,8 @@ private:
         }
       }
 
-      // Draw 1000 CTRW variates from exponential distribution
+      // Draw CTRW variates from exponential distribution
+      ctrwTimes.set_size(walk_length);
       ctrwTimes.imbue( [&]() { return ExponentialDistribution(RNG); } );
 
       // Transform to Pareto distribution and accumulate
@@ -301,12 +302,19 @@ private:
       ctrwTimes = ctrwTimes(arma::span(0,time_boundary));
       ctrwTimes(time_boundary) = true_length;
 
-      
+      // Subordinate fractal walk with CTRW
+      int counter = 0;
+      for (int j = 0; j < true_length; j++) {
+        if (j > ctrwTimes(counter)) {
+          counter++;
+        }
+        true_walks(j) = walks(counter);
+      }
 
       // Finally convert the walk to the coordinate system
       int nx_cell = 0;
       int ny_cell = 0;
-      for (int nstep = 0; nstep < walk_length; nstep++) {
+      for (int nstep = 0; nstep < true_length; nstep++) {
         switch (boundarydetect(nstep)) {
           case 1:
             ny_cell++;
@@ -324,9 +332,9 @@ private:
           default:
               break;
         }
-        walks_coordinates(0, nstep, i) = lattice_coordinates(0, walks(nstep))
+        walks_coordinates(0, nstep, i) = lattice_coordinates(0, true_walks(nstep))
                                           + nx_cell * unit_cell(0);
-        walks_coordinates(1, nstep, i) = lattice_coordinates(1, walks(nstep))
+        walks_coordinates(1, nstep, i) = lattice_coordinates(1, true_walks(nstep))
                                           + ny_cell * unit_cell(1);
       }
     }
