@@ -56,7 +56,6 @@ int main(int argc, const char * argv[]) {
   opt.add("10", 1, 1, 0, "Simulate random walks on this lattice", "-w", "-walks");
   opt.add("1000", 1, 1, 0, "Length of random walks", "-n", "-nsteps");
   opt.add("1", 1, 1, 0, "Power-law beta", "-b", "-beta");
-  opt.add("1000", 1, 1, 0, "Actual length of walks", "-t", "-truelength");
 	opt.add("0", 0,	1, 0, "Random seed", "-s", "-seed");
 
 	// Check for errors
@@ -83,7 +82,7 @@ int main(int argc, const char * argv[]) {
 
   std::string outfile, lattice;
   double fraction, beta;
-  int seed, size, walks, length, truelength;
+  int seed, size, walks, length;
 
   opt.get("-output")->getString(outfile);
   opt.get("-lattice")->getString(lattice);
@@ -93,7 +92,6 @@ int main(int argc, const char * argv[]) {
   opt.get("-seed")->getInt(seed);
   opt.get("-walks")->getInt(walks);
   opt.get("-nsteps")->getInt(length);
-  opt.get("-truelength")->getInt(truelength);
 
   // Check for argument errors
   if (fraction == 0. || fraction > 1.) {
@@ -103,7 +101,7 @@ int main(int argc, const char * argv[]) {
 
   // Generate the lattice and run the walks
   Percolation<int32_t> *sim = new Percolation<int32_t>();
-  sim->Initialize(size, fraction, seed, lattice, walks, length, beta, truelength);
+  sim->Initialize(size, fraction, seed, lattice, walks, length, beta);
   sim->Run();
   sim->Save(outfile);
 

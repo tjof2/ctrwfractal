@@ -40,8 +40,7 @@ public:
                   std::string type,
                   int numwalks,
                   int nsteps,
-                  double userbeta,
-                  int truelength) {
+                  double userbeta) {
     // Initialize threshold
     threshold = pc;
 
@@ -49,7 +48,6 @@ public:
     N_walks = numwalks;
     walk_length = nsteps;
     beta = userbeta;
-    true_length = truelength;
 
     // Get dimensions
     L = size;
@@ -102,8 +100,8 @@ public:
     lattice_coordinates.set_size(3, N);
     walks.set_size(walk_length);
     ctrwTimes.set_size(walk_length);
-    true_walks.set_size(true_length);
-    walks_coordinates.set_size(2, true_length, N_walks);
+    true_walks.set_size(walk_length);
+    walks_coordinates.set_size(2, walk_length, N_walks);
 
 
     // Seed the generator
@@ -166,7 +164,7 @@ public:
 
 private:
   // Dimensions
-  int L, N, EMPTY, latticemode, N_walks, walk_length, true_length;
+  int L, N, EMPTY, latticemode, N_walks, walk_length;
 
   // Number of nearest neighbours
   int nearest;
@@ -229,7 +227,7 @@ private:
     std::exponential_distribution<double> ExponentialDistribution(beta);
 
     arma::uvec boundary_detect(walk_length);
-    arma::uvec true_boundary(true_length);
+    arma::uvec true_boundary(walk_length);
 
     // Simulate a random walk on the lattice
     for (int i = 0; i < N_walks; i++) {
@@ -298,16 +296,16 @@ private:
       // Transform to Pareto distribution and accumulate
       ctrwTimes = arma::cumsum(arma::exp(ctrwTimes));
 
-      // Only keep times within range [0, true_length]
-      arma::uvec temp_time_boundary = arma::find(ctrwTimes >= true_length, 1, "first");
+      // Only keep times within range [0, walk_length]
+      arma::uvec temp_time_boundary = arma::find(ctrwTimes >= walk_length, 1, "first");
       int time_boundary = temp_time_boundary(0);
       ctrwTimes = ctrwTimes(arma::span(0,time_boundary));
-      ctrwTimes(time_boundary) = true_length;
+      ctrwTimes(time_boundary) = walk_length;
 
       // Subordinate fractal walk with CTRW
       int counter = 0;
       true_boundary.zeros();
-      for (int j = 0; j < true_length; j++) {
+      for (int j = 0; j < walk_length; j++) {
         if (j > ctrwTimes(counter)) {
           counter++;
           true_boundary(j) = boundary_detect(counter);
@@ -318,7 +316,7 @@ private:
       // Finally convert the walk to the coordinate system
       int nx_cell = 0;
       int ny_cell = 0;
-      for (int nstep = 0; nstep < true_length; nstep++) {
+      for (int nstep = 0; nstep < walk_length; nstep++) {
         switch (true_boundary(nstep)) {
           case 1:
             ny_cell++;
