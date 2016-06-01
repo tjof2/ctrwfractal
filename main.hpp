@@ -102,7 +102,10 @@ public:
     ctrwTimes.set_size(walk_length);
     true_walks.set_size(walk_length);
     walks_coordinates.set_size(2, walk_length, N_walks);
-
+    eaMSD.set_size(walk_length);
+    taMSD.set_size(walk_length, N_walks);
+    eataMSD.set_size(walk_length);
+    ergodicity.set_size(walk_length);
 
     // Seed the generator
     RNG = SeedRNG(rngseed);
@@ -138,12 +141,20 @@ public:
       time_end - time_start).count()/1E6);
 		std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
 
-    // Now run the random walks
+    // Now run the random walks and analyse
     if (N_walks > 0) {
       std::cout<<std::endl;
       std::cout<<"Simulating random walks... ";
       time_start = GetTime();
       RandomWalks();
+      time_end = GetTime();
+      run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
+        time_end - time_start).count()/1E6);
+      std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
+
+      std::cout<<"Analysing random walks... ";
+      time_start = GetTime();
+      AnalyseWalks();
       time_end = GetTime();
       run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
         time_end - time_start).count()/1E6);
@@ -156,9 +167,11 @@ public:
   void Save(std::string filename) {
     std::cout<<std::endl<<"Saving files: "<<std::endl;
     lattice_coordinates.save(filename + ".cluster", arma::raw_binary);
-    std::cout<<"   Cluster saved to: "<<filename<<".cluster"<<std::endl;
+    std::cout<<"   Cluster saved to:    "<<filename<<".cluster"<<std::endl;
     walks_coordinates.save(filename + ".walks", arma::raw_binary);
-    std::cout<<"   Walks saved to:   "<<filename<<".walks"<<std::endl;
+    std::cout<<"   Walks saved to:      "<<filename<<".walks"<<std::endl;
+    eaMSD.save(filename + ".data", arma::raw_binary);
+    std::cout<<"   Analysis saved to:   "<<filename<<".data"<<std::endl;
     return;
   }
 
@@ -175,8 +188,9 @@ private:
   arma::vec ctrwTimes;
   arma::mat lattice_coordinates;
   arma::cube walks_coordinates;
-
   arma::colvec unit_cell;
+  arma::vec eaMSD, eataMSD, ergodicity;
+  arma::mat taMSD;
 
   // Honeycomb lattice only - check for first or last row
   arma::Col<T> firstrow, lastrow;
@@ -207,16 +221,29 @@ private:
   pcg64 RNG;
   std::uniform_int_distribution<uint32_t> UniformDistribution {0, 4294967294};
 
-  pcg64 SeedRNG(int seed) {
-    // Check for user-defined seed
-    if(seed > 0) {
-      return pcg64(seed);
+  void AnalyseWalks() {
+    // Zero the placeholders
+    eaMSD.zeros();
+    taMSD.zeros();
+    eataMSD.zeros();
+    ergodicity.zeros();
+
+    // Ensemble average
+    for (int i = 0; i < N_walks; i++) {
+      arma::vec2 walk_origin, walk_step;
+      walk_origin = walks_coordinates.slice(i).col(0);
+      for (int j = 0; j < walk_length; j++) {
+        walk_step = walks_coordinates.slice(i).col(j);
+        eaMSD(j) += std::pow(walk_step(0) - walk_origin(0), 2)
+                      + std::pow(walk_step(1) - walk_origin(1), 2);
+      }
     }
-    else {
-      // Initialize random seed
-      pcg_extras::seed_seq_from<std::random_device> seed_source;
-      return pcg64(seed_source);
-    }
+    eaMSD /= N_walks;
+
+    // Time-average
+
+
+    return;
   }
 
   void RandomWalks() {
@@ -561,6 +588,19 @@ private:
       }
     }
     return;
+  }
+
+  // Random number generator
+  pcg64 SeedRNG(int seed) {
+    // Check for user-defined seed
+    if(seed > 0) {
+      return pcg64(seed);
+    }
+    else {
+      // Initialize random seed
+      pcg_extras::seed_seq_from<std::random_device> seed_source;
+      return pcg64(seed_source);
+    }
   }
 
   // Nearest neighbours of a square lattice

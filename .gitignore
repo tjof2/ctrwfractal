@@ -45,6 +45,7 @@ fractalwalk
 # Output files
 *.cluster
 *.walks
+*.data
 
 # Python files
 *.pyc
