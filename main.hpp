@@ -101,9 +101,10 @@ public:
     occupation.set_size(N);
     lattice_coordinates.set_size(3, N);
     walks.set_size(walk_length);
+    ctrwTimes.set_size(walk_length);
     true_walks.set_size(true_length);
     walks_coordinates.set_size(2, true_length, N_walks);
-    ctrwTimes.set_size(walk_length);
+
 
     // Seed the generator
     RNG = SeedRNG(rngseed);
