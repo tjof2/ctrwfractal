@@ -228,7 +228,8 @@ private:
     std::uniform_int_distribution<T> RandSample(0, static_cast<int>(latticeones.n_elem) - 1);
     std::exponential_distribution<double> ExponentialDistribution(beta);
 
-    arma::uvec boundarydetect(walk_length);
+    arma::uvec boundary_detect(walk_length);
+    arma::uvec true_boundary(true_length);
 
     // Simulate a random walk on the lattice
     for (int i = 0; i < N_walks; i++) {
@@ -252,11 +253,11 @@ private:
       // set the whole walk to that site
       if (count_loop == count_max) {
         walks = pos * arma::ones<arma::Col<T>>(walk_length);
-        boundarydetect.zeros();
+        boundary_detect.zeros();
       }
       else {
         walks(0) = pos;
-        boundarydetect(0) = 0;
+        boundary_detect(0) = 0;
         for (int j = 1; j < walk_length; j++) {
           arma::Col<T> neighbours = GetOccupiedNeighbours(pos);
           std::uniform_int_distribution<T> RandChoice(0, static_cast<int>(neighbours.n_elem) - 1);
@@ -266,26 +267,26 @@ private:
           // Check for walks that hit the top boundary
           if (arma::any(firstrow == walks(j - 1))
               && arma::any(lastrow == pos)) {
-            boundarydetect(j) = 1;
+            boundary_detect(j) = 1;
           }
           // Check for walks that hit the bottom boundary
           else if (arma::any(lastrow == walks(j - 1))
                    && arma::any(firstrow == pos)) {
-            boundarydetect(j) = 2;
+            boundary_detect(j) = 2;
           }
           // Check for walks that hit the RHS
           else if (walks(j - 1) > (N - L)
                    && pos < L) {
-            boundarydetect(j) = 3;
+            boundary_detect(j) = 3;
           }
           // Check for walks that hit the LHS
           else if (walks(j - 1) < L
                    && pos > (N - L)) {
-            boundarydetect(j) = 4;
+            boundary_detect(j) = 4;
           }
           // Else do nothing
           else {
-            boundarydetect(j) = 0;
+            boundary_detect(j) = 0;
           }
         }
       }
@@ -305,9 +306,11 @@ private:
 
       // Subordinate fractal walk with CTRW
       int counter = 0;
+      true_boundary.zeros();
       for (int j = 0; j < true_length; j++) {
         if (j > ctrwTimes(counter)) {
           counter++;
+          true_boundary(j) = boundary_detect(counter);
         }
         true_walks(j) = walks(counter);
       }
@@ -316,7 +319,7 @@ private:
       int nx_cell = 0;
       int ny_cell = 0;
       for (int nstep = 0; nstep < true_length; nstep++) {
-        switch (boundarydetect(nstep)) {
+        switch (true_boundary(nstep)) {
           case 1:
             ny_cell++;
             break;
