@@ -248,8 +248,16 @@ private:
         eataMSD_all(j - 1, i) = TAMSD(walks_coords.slice(i), j, 1);
       }
     }
+    // Check for NaNs
+    eaMSD.elem( arma::find_nonfinite(eaMSD) ).zeros();
+    taMSD.elem( arma::find_nonfinite(taMSD) ).zeros();
+    eaMSD_all.elem( arma::find_nonfinite(eataMSD_all) ).zeros();
+
+    // Take means
     eaMSD = arma::mean(eaMSD_all, 1);
     eataMSD = arma::mean(eataMSD_all, 1);
+
+    // Another check for NaNs
     eataMSD.elem( arma::find_nonfinite(eataMSD) ).zeros();
 
     // Ergodicity breaking over s
