@@ -3,17 +3,22 @@
     Copyright (C) 2016 Tom Furnival
     Email: tjof2@cam.ac.uk
 
-    This file is part of Percolation.
+    This file is part of CTRWfractal
 
-    Developed from C code by Mark Newman.
+    Percolation clusters developed from C code by Mark Newman.
     http://www-personal.umich.edu/~mejn/percolation/
     "A fast Monte Carlo algorithm for site or bond percolation"
     M. E. J. Newman and R. M. Ziff, Phys. Rev. E 64, 016706 (2001).
 
+    See http://dx.doi.org/10.1088/1751-8113/47/13/135001
+    for details on thresholds for percolation:
+      - Square:     0.592746
+      - Honeycomb:  0.697040230
+
 ***************************************************************************/
 
-#ifndef MAIN_H
-#define MAIN_H
+#ifndef CTRW_H
+#define CTRW_H
 
 // C++ headers
 #include <chrono>
@@ -29,25 +34,25 @@
 #include "pcg/pcg_random.hpp"
 
 template <class T>
-class Percolation {
+class CTRWfractal {
 public:
-  Percolation() {};
-  ~Percolation() {};
+  CTRWfractal() {};
+  ~CTRWfractal() {};
 
   void Initialize(int size,
                   double pc,
                   int rngseed,
                   std::string type,
-                  int numwalks,
+                  int nwalks,
                   int nsteps,
-                  double userbeta) {
+                  double power_beta) {
     // Initialize threshold
     threshold = pc;
 
     // Number of random walks (>0)
-    N_walks = numwalks;
+    n_walks = nwalks;
     walk_length = nsteps;
-    beta = userbeta;
+    beta = power_beta;
 
     // Get dimensions
     L = size;
@@ -55,15 +60,16 @@ public:
     // Check mode
     std::cout<<"Searching neighbours...    ";
     if (type.compare("Honeycomb") == 0) {
-      latticemode = 1;
+      lattice_mode = 1;
       nearest = 3;
       N = L * L * 4;
       nn.set_size(nearest, N);
-      firstrow.set_size(2 * L);
-      lastrow.set_size(2 * L);
+      first_row.set_size(2 * L);
+      last_row.set_size(2 * L);
       for (int i = 1; i <= 2 * L; i++) {
-        firstrow(i-1) = 1 - (3 * L) / 2. + (std::pow(-1, i) * L) / 2. + 2 * i * L - 1;
-        lastrow(i-1) = L/2 * (4*i + std::pow(-1, i + 1) - 1) - 1;
+        first_row(i-1) = 1 - (3 * L) / 2. + (std::pow(-1, i) * L) / 2.
+                           + 2 * i * L - 1;
+        last_row(i-1) = L/2 * (4*i + std::pow(-1, i + 1) - 1) - 1;
       }
       time_start = GetTime();
       BoundariesHoneycomb();
@@ -73,7 +79,7 @@ public:
       std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
     }
     else if (type.compare("Square") == 0) {
-      latticemode = 0;
+      lattice_mode = 0;
       nearest = 4;
       N = L * L;
       nn.set_size(nearest, N);
@@ -97,13 +103,13 @@ public:
     // Set array sizes
     lattice.set_size(N);
     occupation.set_size(N);
-    lattice_coordinates.set_size(3, N);
+    lattice_coords.set_size(3, N);
     walks.set_size(walk_length);
-    ctrwTimes.set_size(walk_length);
+    ctrw_times.set_size(walk_length);
     true_walks.set_size(walk_length);
-    walks_coordinates.set_size(2, walk_length, N_walks);
+    walks_coords.set_size(2, walk_length, n_walks);
     eaMSD.set_size(walk_length);
-    taMSD.set_size(walk_length, N_walks);
+    taMSD.set_size(walk_length, n_walks);
     eataMSD.set_size(walk_length);
     ergodicity.set_size(walk_length);
 
@@ -142,7 +148,7 @@ public:
 		std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
 
     // Now run the random walks and analyse
-    if (N_walks > 0) {
+    if (n_walks > 0) {
       std::cout<<std::endl;
       std::cout<<"Simulating random walks... ";
       time_start = GetTime();
@@ -152,7 +158,7 @@ public:
         time_end - time_start).count()/1E6);
       std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
 
-      std::cout<<"Analysing random walks... ";
+      std::cout<<"Analysing random walks...  ";
       time_start = GetTime();
       AnalyseWalks();
       time_end = GetTime();
@@ -166,9 +172,9 @@ public:
 
   void Save(std::string filename) {
     std::cout<<std::endl<<"Saving files: "<<std::endl;
-    lattice_coordinates.save(filename + ".cluster", arma::raw_binary);
+    lattice_coords.save(filename + ".cluster", arma::raw_binary);
     std::cout<<"   Cluster saved to:    "<<filename<<".cluster"<<std::endl;
-    walks_coordinates.save(filename + ".walks", arma::raw_binary);
+    walks_coords.save(filename + ".walks", arma::raw_binary);
     std::cout<<"   Walks saved to:      "<<filename<<".walks"<<std::endl;
     eaMSD.save(filename + ".data", arma::raw_binary);
     std::cout<<"   Analysis saved to:   "<<filename<<".data"<<std::endl;
@@ -176,35 +182,21 @@ public:
   }
 
 private:
-  // Dimensions
-  int L, N, EMPTY, latticemode, N_walks, walk_length;
 
-  // Number of nearest neighbours
-  int nearest;
+  int L, N, EMPTY, lattice_mode, n_walks, walk_length, nearest;
 
-  // Arrays to hold information
-  arma::Col<T> lattice, occupation, walks, true_walks;
+  arma::Col<T> lattice, occupation, walks, true_walks, first_row, last_row;
   arma::Mat<T> nn;
-  arma::vec ctrwTimes;
-  arma::mat lattice_coordinates;
-  arma::cube walks_coordinates;
-  arma::colvec unit_cell;
-  arma::vec eaMSD, eataMSD, ergodicity;
-  arma::mat taMSD;
+  arma::vec unit_cell, ctrw_times, eaMSD, eataMSD, ergodicity;
+  arma::mat lattice_coords, taMSD;
+  arma::cube walks_coords;
 
-  // Honeycomb lattice only - check for first or last row
-  arma::Col<T> firstrow, lastrow;
-
-  // Percolation threshold
-  double threshold;
-
-  // Power-law beta
-  double beta;
-
+  double threshold, beta, run_time;
   const double sqrt3 = 1.7320508075688772;
 
-  // Timing
-  double run_time;
+  pcg64 RNG;
+  std::uniform_int_distribution<uint32_t> UniformDistribution {0, 4294967294};
+
 	#if __cplusplus <= 199711L
 	 std::chrono::time_point<std::chrono::monotonic_clock> time_start, time_end;
    std::chrono::time_point<std::chrono::monotonic_clock> GetTime() {
@@ -217,10 +209,6 @@ private:
    }
 	#endif
 
-  // Random numbers
-  pcg64 RNG;
-  std::uniform_int_distribution<uint32_t> UniformDistribution {0, 4294967294};
-
   void AnalyseWalks() {
     // Zero the placeholders
     eaMSD.zeros();
@@ -228,19 +216,19 @@ private:
     eataMSD.zeros();
     ergodicity.zeros();
 
-    // Ensemble average
-    for (int i = 0; i < N_walks; i++) {
+    // Ensemble average MSD
+    for (int i = 0; i < n_walks; i++) {
       arma::vec2 walk_origin, walk_step;
-      walk_origin = walks_coordinates.slice(i).col(0);
+      walk_origin = walks_coords.slice(i).col(0);
       for (int j = 0; j < walk_length; j++) {
-        walk_step = walks_coordinates.slice(i).col(j);
+        walk_step = walks_coords.slice(i).col(j);
         eaMSD(j) += std::pow(walk_step(0) - walk_origin(0), 2)
                       + std::pow(walk_step(1) - walk_origin(1), 2);
       }
     }
-    eaMSD /= N_walks;
+    eaMSD /= n_walks;
 
-    // Time-average
+    // Time-average MSD
 
 
     return;
@@ -257,7 +245,7 @@ private:
     arma::uvec true_boundary(walk_length);
 
     // Simulate a random walk on the lattice
-    for (int i = 0; i < N_walks; i++) {
+    for (int i = 0; i < n_walks; i++) {
       bool ok_start = false;
       int pos;
       int count_loop = 0;
@@ -290,13 +278,13 @@ private:
           walks(j) = pos;
 
           // Check for walks that hit the top boundary
-          if (arma::any(firstrow == walks(j - 1))
-              && arma::any(lastrow == pos)) {
+          if (arma::any(first_row == walks(j - 1))
+              && arma::any(last_row == pos)) {
             boundary_detect(j) = 1;
           }
           // Check for walks that hit the bottom boundary
-          else if (arma::any(lastrow == walks(j - 1))
-                   && arma::any(firstrow == pos)) {
+          else if (arma::any(last_row == walks(j - 1))
+                   && arma::any(first_row == pos)) {
             boundary_detect(j) = 2;
           }
           // Check for walks that hit the RHS
@@ -317,23 +305,23 @@ private:
       }
 
       // Draw CTRW variates from exponential distribution
-      ctrwTimes.set_size(walk_length);
-      ctrwTimes.imbue( [&]() { return ExponentialDistribution(RNG); } );
+      ctrw_times.set_size(walk_length);
+      ctrw_times.imbue( [&]() { return ExponentialDistribution(RNG); } );
 
       // Transform to Pareto distribution and accumulate
-      ctrwTimes = arma::cumsum(arma::exp(ctrwTimes));
+      ctrw_times = arma::cumsum(arma::exp(ctrw_times));
 
       // Only keep times within range [0, walk_length]
-      arma::uvec temp_time_boundary = arma::find(ctrwTimes >= walk_length, 1, "first");
+      arma::uvec temp_time_boundary = arma::find(ctrw_times >= walk_length, 1, "first");
       int time_boundary = temp_time_boundary(0);
-      ctrwTimes = ctrwTimes(arma::span(0,time_boundary));
-      ctrwTimes(time_boundary) = walk_length;
+      ctrw_times = ctrw_times(arma::span(0,time_boundary));
+      ctrw_times(time_boundary) = walk_length;
 
       // Subordinate fractal walk with CTRW
       int counter = 0;
       true_boundary.zeros();
       for (int j = 0; j < walk_length; j++) {
-        if (j > ctrwTimes(counter)) {
+        if (j > ctrw_times(counter)) {
           counter++;
           true_boundary(j) = boundary_detect(counter);
         }
@@ -361,9 +349,9 @@ private:
           default:
               break;
         }
-        walks_coordinates(0, nstep, i) = lattice_coordinates(0, true_walks(nstep))
+        walks_coords(0, nstep, i) = lattice_coords(0, true_walks(nstep))
                                           + nx_cell * unit_cell(0);
-        walks_coordinates(1, nstep, i) = lattice_coordinates(1, true_walks(nstep))
+        walks_coords(1, nstep, i) = lattice_coords(1, true_walks(nstep))
                                           + ny_cell * unit_cell(1);
       }
     }
@@ -372,7 +360,7 @@ private:
 
   void BuildLattice() {
     // Populate the honeycomb lattice coordinates
-    if (latticemode == 1) {
+    if (lattice_mode == 1) {
       double xx, yy;
       int count = 0;
       int cur_col = 0;
@@ -398,17 +386,17 @@ private:
                 yy = j * sqrt3 + sqrt3/2;
                 break;
           }
-          lattice_coordinates(0, count) = xx;
-          lattice_coordinates(1, count) = yy;
-          lattice_coordinates(2, count) = (lattice(count) == EMPTY) ? 0 : 1;
+          lattice_coords(0, count) = xx;
+          lattice_coords(1, count) = yy;
+          lattice_coords(2, count) = (lattice(count) == EMPTY) ? 0 : 1;
           count++;
         }
       }
+      // Get unit cell size
+      unit_cell = arma::max(lattice_coords, 1);
+      unit_cell(0) += 3/2;
+      unit_cell(1) += sqrt3/2;
     }
-    // Get unit cell size
-    unit_cell = arma::max(lattice_coordinates, 1);
-    unit_cell(0) += 3/2;
-    unit_cell(1) += sqrt3/2;
     return;
   }
 
@@ -524,7 +512,7 @@ private:
         switch (cur_col) {
           case 0:
             // First row
-            if (arma::any(firstrow == i)) {
+            if (arma::any(first_row == i)) {
               nn(0, i) = i - L;
               nn(1, i) = i + L;
               nn(2, i) = i + 2*L - 1;
@@ -538,7 +526,7 @@ private:
             break;
           case 1:
             // Last row
-            if (arma::any(lastrow == i)) {
+            if (arma::any(last_row == i)) {
               nn(0, i) = i - L;
               nn(1, i) = i + L;
               nn(2, i) = i - 2*L + 1;
@@ -552,7 +540,7 @@ private:
             break;
           case 2:
             // Last row
-            if (arma::any(lastrow == i)) {
+            if (arma::any(last_row == i)) {
               nn(0, i) = i - L;
               nn(1, i) = i + L;
               nn(2, i) = i + 1;
@@ -566,7 +554,7 @@ private:
             break;
           case 3:
             // First row
-            if (arma::any(firstrow == i)) {
+            if (arma::any(first_row == i)) {
               nn(0, i) = i - 1;
               nn(1, i) = i - L;
               nn(2, i) = i + L;
