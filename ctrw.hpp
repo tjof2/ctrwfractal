@@ -48,7 +48,8 @@ public:
                   std::string type,
                   int nwalks,
                   int nsteps,
-                  double power_beta) {
+                  double power_beta,
+                  double walk_noise) {
     // Initialize threshold
     threshold = pc;
 
@@ -56,6 +57,7 @@ public:
     n_walks = nwalks;
     walk_length = nsteps;
     beta = power_beta;
+    noise = walk_noise;
 
     // Get dimensions
     L = size;
@@ -164,6 +166,17 @@ public:
         time_end - time_start).count() / 1E6);
       std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
 
+      // Add noise to walk
+      if (noise > 0.) {
+        std::cout<<"Adding noise...            ";
+        time_start = GetTime();
+        AddNoise();
+        time_end = GetTime();
+        run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
+          time_end - time_start).count() / 1E6);
+        std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
+      }
+
       std::cout<<"Analysing random walks...  ";
       time_start = GetTime();
       AnalyseWalks();
@@ -198,7 +211,7 @@ private:
   arma::mat analysis;
   arma::cube walks_coords;
 
-  double threshold, beta, run_time;
+  double threshold, beta, run_time, noise;
   const double sqrt3 = 1.7320508075688772;
 
   pcg64 RNG;
@@ -242,6 +255,7 @@ private:
     }
     eaMSD = arma::mean(eaMSD_all, 1);
     eataMSD = arma::mean(eataMSD_all, 1);
+    eataMSD.elem( arma::find_nonfinite(eataMSD) ).zeros();
 
     // Ergodicity breaking over s
     arma::mat mean_taMSD = arma::square(arma::mean(taMSD, 1));
@@ -267,6 +281,15 @@ private:
                     + std::pow(walk(1, i + delta) - walk(1, i), 2);
     }
     return integral / diff;
+  }
+
+  void AddNoise() {
+    // Add noise to walk
+    arma::cube noise_cube(size(walks_coords));
+    std::normal_distribution<double> NormalDistribution(0, noise);
+    noise_cube.imbue( [&]() { return NormalDistribution(RNG); } );
+    walks_coords += noise_cube;
+    return;
   }
 
   void RandomWalks() {
