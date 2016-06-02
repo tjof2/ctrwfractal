@@ -117,6 +117,7 @@ public:
     eataMSD.set_size(walk_length);
     eataMSD_all.set_size(walk_length, n_walks);
     ergodicity.set_size(walk_length);
+    analysis.set_size(walk_length, n_walks + 3);
 
     // Seed the generator
     RNG = SeedRNG(rngseed);
@@ -181,7 +182,7 @@ public:
     std::cout<<"   Cluster saved to:    "<<filename<<".cluster"<<std::endl;
     walks_coords.save(filename + ".walks", arma::raw_binary);
     std::cout<<"   Walks saved to:      "<<filename<<".walks"<<std::endl;
-    eataMSD.save(filename + ".data", arma::raw_binary);
+    analysis.save(filename + ".data", arma::raw_binary);
     std::cout<<"   Analysis saved to:   "<<filename<<".data"<<std::endl;
     return;
   }
@@ -194,6 +195,7 @@ private:
   arma::Mat<T> nn;
   arma::vec unit_cell, ctrw_times, eaMSD, eataMSD, ergodicity;
   arma::mat lattice_coords, eaMSD_all, eataMSD_all, taMSD;
+  arma::mat analysis;
   arma::cube walks_coords;
 
   double threshold, beta, run_time;
@@ -240,6 +242,20 @@ private:
     }
     eaMSD = arma::mean(eaMSD_all, 1);
     eataMSD = arma::mean(eataMSD_all, 1);
+
+    // Ergodicity breaking over s
+    arma::mat mean_taMSD = arma::square(arma::mean(taMSD, 1));
+    arma::mat mean_taMSD2 = arma::mean(arma::square(taMSD), 1);
+    ergodicity = (mean_taMSD2 - mean_taMSD) / mean_taMSD;
+    ergodicity.elem( arma::find_nonfinite(ergodicity) ).zeros();
+    ergodicity /= arma::regspace<arma::vec>(1, walk_length);
+    ergodicity.elem( arma::find_nonfinite(ergodicity) ).zeros();
+
+    analysis.col(0) = eaMSD;
+    analysis.col(1) = eataMSD;
+    analysis.col(2) = ergodicity;
+    analysis.cols(3, n_walks + 2) = taMSD;
+
     return;
   }
 
