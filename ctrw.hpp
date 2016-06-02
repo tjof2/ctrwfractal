@@ -114,12 +114,12 @@ public:
     true_walks.set_size(walk_length);
     walks_coords.set_size(2, walk_length, n_walks);
     eaMSD.set_size(walk_length);
-    eaMSD_all.set_size(walk_length, n_walks);
-    taMSD.set_size(walk_length, n_walks);
-    eataMSD.set_size(walk_length);
-    eataMSD_all.set_size(walk_length, n_walks);
-    ergodicity.set_size(walk_length);
-    analysis.set_size(walk_length, n_walks + 3);
+    eaMSD_all.set_size(walk_length - 1, n_walks);
+    taMSD.set_size(walk_length - 1, n_walks);
+    eataMSD.set_size(walk_length - 1);
+    eataMSD_all.set_size(walk_length - 1, n_walks);
+    ergodicity.set_size(walk_length - 1);
+    analysis.set_size(walk_length - 1, n_walks + 3);
 
     // Seed the generator
     RNG = SeedRNG(rngseed);
@@ -185,7 +185,6 @@ public:
         time_end - time_start).count() / 1E6);
       std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
     }
-
     return;
   }
 
@@ -201,7 +200,6 @@ public:
   }
 
 private:
-
   int L, N, EMPTY, lattice_mode, n_walks, walk_length, nearest;
 
   arma::Col<T> lattice, occupation, walks, true_walks, first_row, last_row;
@@ -232,8 +230,10 @@ private:
   void AnalyseWalks() {
     // Zero the placeholders
     eaMSD.zeros();
+    eaMSD_all.zeros();
     taMSD.zeros();
     eataMSD.zeros();
+    eataMSD_all.zeros();
     ergodicity.zeros();
 
     // Parallelize over n_walks
@@ -241,16 +241,16 @@ private:
     for (int i = 0; i < n_walks; i++) {
       arma::vec2 walk_origin, walk_step;
       walk_origin = walks_coords.slice(i).col(0);
-      for (int j = 0; j < walk_length; j++) {
+      for (int j = 1; j < walk_length; j++) {
         // Ensemble-average MSD
         walk_step = walks_coords.slice(i).col(j);
-        eaMSD_all(j, i) += std::pow(walk_step(0) - walk_origin(0), 2)
-                            + std::pow(walk_step(1) - walk_origin(1), 2);
+        eaMSD_all(j - 1, i) = std::pow(walk_step(0) - walk_origin(0), 2)
+                               + std::pow(walk_step(1) - walk_origin(1), 2);
         // Time-average MSD
-        taMSD(j, i) = TAMSD(walks_coords.slice(i), walk_length, j);
+        taMSD(j - 1, i) = TAMSD(walks_coords.slice(i), walk_length, j);
 
         // Ensemble-time-average MSD
-        eataMSD_all(j, i) = TAMSD(walks_coords.slice(i), j, 1);
+        eataMSD_all(j - 1, i) = TAMSD(walks_coords.slice(i), j, 1);
       }
     }
     eaMSD = arma::mean(eaMSD_all, 1);
@@ -262,7 +262,7 @@ private:
     arma::mat mean_taMSD2 = arma::mean(arma::square(taMSD), 1);
     ergodicity = (mean_taMSD2 - mean_taMSD) / mean_taMSD;
     ergodicity.elem( arma::find_nonfinite(ergodicity) ).zeros();
-    ergodicity /= arma::regspace<arma::vec>(1, walk_length);
+    ergodicity /= arma::regspace<arma::vec>(1, walk_length - 1);
     ergodicity.elem( arma::find_nonfinite(ergodicity) ).zeros();
 
     analysis.col(0) = eaMSD;
@@ -347,13 +347,13 @@ private:
             boundary_detect(j) = 2;
           }
           // Check for walks that hit the RHS
-          else if (walks(j - 1) > (N - L)
+          else if (walks(j - 1) >= (N - L)
                    && pos < L) {
             boundary_detect(j) = 3;
           }
           // Check for walks that hit the LHS
           else if (walks(j - 1) < L
-                   && pos > (N - L)) {
+                   && pos >= (N - L)) {
             boundary_detect(j) = 4;
           }
           // Else do nothing
