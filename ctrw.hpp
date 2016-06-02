@@ -10,11 +10,6 @@
     "A fast Monte Carlo algorithm for site or bond percolation"
     M. E. J. Newman and R. M. Ziff, Phys. Rev. E 64, 016706 (2001).
 
-    See http://dx.doi.org/10.1088/1751-8113/47/13/135001
-    for details on thresholds for percolation:
-      - Square:     0.592746
-      - Honeycomb:  0.697040230
-
 ***************************************************************************/
 
 #ifndef CTRW_H

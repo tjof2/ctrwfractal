@@ -41,7 +41,7 @@ int main(int argc, const char * argv[]) {
 	);
 	opt.add("honeycomb", 0, 1, 0, "Filename for output", "-o", "-output");
   opt.add("Honeycomb", 0, 1, 0, "Lattice type", "-l", "-lattice");
-  opt.add("0.5", 0,	1, 0, "Percolation fraction", "-f", "-fraction");
+  opt.add("-1", 0,	1, 0, "Percolation fraction", "-f", "-fraction");
 	opt.add("128", 0, 1, 0, "Dimensions of lattice", "-d", "-dim");
   opt.add("10", 1, 1, 0, "Simulate random walks on this lattice", "-w", "-walks");
   opt.add("1000", 1, 1, 0, "Length of random walks", "-n", "-nsteps");
@@ -93,7 +93,20 @@ int main(int argc, const char * argv[]) {
     std::cerr << "ERROR: fraction must be 0 < f <= 1" << std::endl;
     return 1;
   }
+  else if (fraction < 0.) {
+    // See http://dx.doi.org/10.1088/1751-8113/47/13/135001
+    // for details on thresholds for percolation:
+    //   - Square:     0.592746
+    //   - Honeycomb:  0.697040230
 
+    if (lattice.compare("Honeycomb") == 0) {
+      fraction = 0.697040230;
+    }
+    else if (lattice.compare("Square") == 0) {
+      fraction = 0.592746;
+    }
+  }
+  
   // Generate the lattice and run the walks
   CTRWfractal<int32_t> *sim = new CTRWfractal<int32_t>();
   sim->Initialize(size, fraction, seed, lattice, walks, length, beta, noise);
