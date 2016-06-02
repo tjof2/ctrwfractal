@@ -27,6 +27,9 @@
 #include <iomanip>
 #include <random>
 
+// OpenMP
+#include <omp.h>
+
 // Armadillo
 #include <armadillo>
 
@@ -91,7 +94,7 @@ public:
   		std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
     }
     else {
-      std::cout << "!!! WARNING: "
+      std::cerr << "!!! WARNING: "
                 << type.c_str()
                 << " must be either 'Square' or 'Honeycomb' !!!"
                 << std::endl;
@@ -109,6 +112,7 @@ public:
     true_walks.set_size(walk_length);
     walks_coords.set_size(2, walk_length, n_walks);
     eaMSD.set_size(walk_length);
+    eaMSD_all.set_size(walk_length, n_walks);
     taMSD.set_size(walk_length, n_walks);
     eataMSD.set_size(walk_length);
     ergodicity.set_size(walk_length);
@@ -188,7 +192,7 @@ private:
   arma::Col<T> lattice, occupation, walks, true_walks, first_row, last_row;
   arma::Mat<T> nn;
   arma::vec unit_cell, ctrw_times, eaMSD, eataMSD, ergodicity;
-  arma::mat lattice_coords, taMSD;
+  arma::mat lattice_coords, eaMSD_all, taMSD;
   arma::cube walks_coords;
 
   double threshold, beta, run_time;
@@ -209,6 +213,16 @@ private:
    }
 	#endif
 
+  double TAMSD(const arma::mat &walk, int t, int delta) {
+    double integral = 0.;
+    int diff = t - delta;
+    for (int i = 0; i < diff; i++) {
+      integral += std::pow(walk(0, i + delta) - walk(0, i), 2)
+                    + std::pow(walk(1, i + delta) - walk(1, i), 2);
+    }
+    return integral / diff;
+  }
+
   void AnalyseWalks() {
     // Zero the placeholders
     eaMSD.zeros();
@@ -217,20 +231,18 @@ private:
     ergodicity.zeros();
 
     // Ensemble average MSD
+    #pragma omp parallel for
     for (int i = 0; i < n_walks; i++) {
       arma::vec2 walk_origin, walk_step;
       walk_origin = walks_coords.slice(i).col(0);
       for (int j = 0; j < walk_length; j++) {
         walk_step = walks_coords.slice(i).col(j);
-        eaMSD(j) += std::pow(walk_step(0) - walk_origin(0), 2)
-                      + std::pow(walk_step(1) - walk_origin(1), 2);
+        eaMSD_all(j, i) += std::pow(walk_step(0) - walk_origin(0), 2)
+                            + std::pow(walk_step(1) - walk_origin(1), 2);
+        taMSD(j, i) = TAMSD(walks_coords.slice(i), walk_length, j);
       }
     }
-    eaMSD /= n_walks;
-
-    // Time-average MSD
-
-
+    eaMSD = arma::mean(eaMSD_all, 1);
     return;
   }
 
@@ -397,6 +409,7 @@ private:
       unit_cell(0) += 3/2;
       unit_cell(1) += sqrt3/2;
     }
+    // To-do - build lattice for square lattice
     return;
   }
 
@@ -471,7 +484,7 @@ private:
     return;
   }
 
-  // Nearest neighbours of a graphene lattice with
+  // Nearest neighbours of a honeycomb lattice with
   // periodic boundary conditions
   void BoundariesHoneycomb() {
     int cur_col = 0;
@@ -578,19 +591,6 @@ private:
     return;
   }
 
-  // Random number generator
-  pcg64 SeedRNG(int seed) {
-    // Check for user-defined seed
-    if(seed > 0) {
-      return pcg64(seed);
-    }
-    else {
-      // Initialize random seed
-      pcg_extras::seed_seq_from<std::random_device> seed_source;
-      return pcg64(seed_source);
-    }
-  }
-
   // Nearest neighbours of a square lattice
   // with periodic boundary conditions
   void BoundariesSquare() {
@@ -607,6 +607,20 @@ private:
       }
     }
     return;
+  }
+
+
+  // Random number generator
+  pcg64 SeedRNG(int seed) {
+    // Check for user-defined seed
+    if(seed > 0) {
+      return pcg64(seed);
+    }
+    else {
+      // Initialize random seed
+      pcg_extras::seed_seq_from<std::random_device> seed_source;
+      return pcg64(seed_source);
+    }
   }
 };
 
