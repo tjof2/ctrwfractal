@@ -78,7 +78,7 @@ public:
       BoundariesHoneycomb();
       time_end = GetTime();
       run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-        time_end - time_start).count()/1E6);
+        time_end - time_start).count() / 1E6);
       std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
     }
     else if (type.compare("Square") == 0) {
@@ -90,7 +90,7 @@ public:
       BoundariesSquare();
     	time_end = GetTime();
   		run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-        time_end - time_start).count()/1E6);
+        time_end - time_start).count() / 1E6);
   		std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
     }
     else {
@@ -115,6 +115,7 @@ public:
     eaMSD_all.set_size(walk_length, n_walks);
     taMSD.set_size(walk_length, n_walks);
     eataMSD.set_size(walk_length);
+    eataMSD_all.set_size(walk_length, n_walks);
     ergodicity.set_size(walk_length);
 
     // Seed the generator
@@ -130,7 +131,7 @@ public:
     Permutation();
   	time_end = GetTime();
 		run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-      time_end - time_start).count()/1E6);
+      time_end - time_start).count() / 1E6);
 		std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
 
     // Now run the percolation algorithm
@@ -139,7 +140,7 @@ public:
     Percolate();
   	time_end = GetTime();
 		run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-      time_end - time_start).count()/1E6);
+      time_end - time_start).count() / 1E6);
 		std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
 
     // Now build the lattice coordinates
@@ -148,7 +149,7 @@ public:
     BuildLattice();
   	time_end = GetTime();
 		run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-      time_end - time_start).count()/1E6);
+      time_end - time_start).count() / 1E6);
 		std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
 
     // Now run the random walks and analyse
@@ -159,7 +160,7 @@ public:
       RandomWalks();
       time_end = GetTime();
       run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-        time_end - time_start).count()/1E6);
+        time_end - time_start).count() / 1E6);
       std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
 
       std::cout<<"Analysing random walks...  ";
@@ -167,7 +168,7 @@ public:
       AnalyseWalks();
       time_end = GetTime();
       run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-        time_end - time_start).count()/1E6);
+        time_end - time_start).count() / 1E6);
       std::cout<<std::setprecision(6)<<run_time<<" s"<<std::endl;
     }
 
@@ -180,7 +181,7 @@ public:
     std::cout<<"   Cluster saved to:    "<<filename<<".cluster"<<std::endl;
     walks_coords.save(filename + ".walks", arma::raw_binary);
     std::cout<<"   Walks saved to:      "<<filename<<".walks"<<std::endl;
-    eaMSD.save(filename + ".data", arma::raw_binary);
+    eataMSD.save(filename + ".data", arma::raw_binary);
     std::cout<<"   Analysis saved to:   "<<filename<<".data"<<std::endl;
     return;
   }
@@ -192,7 +193,7 @@ private:
   arma::Col<T> lattice, occupation, walks, true_walks, first_row, last_row;
   arma::Mat<T> nn;
   arma::vec unit_cell, ctrw_times, eaMSD, eataMSD, ergodicity;
-  arma::mat lattice_coords, eaMSD_all, taMSD;
+  arma::mat lattice_coords, eaMSD_all, eataMSD_all, taMSD;
   arma::cube walks_coords;
 
   double threshold, beta, run_time;
@@ -213,6 +214,35 @@ private:
    }
 	#endif
 
+  void AnalyseWalks() {
+    // Zero the placeholders
+    eaMSD.zeros();
+    taMSD.zeros();
+    eataMSD.zeros();
+    ergodicity.zeros();
+
+    // Parallelize over n_walks
+    #pragma omp parallel for
+    for (int i = 0; i < n_walks; i++) {
+      arma::vec2 walk_origin, walk_step;
+      walk_origin = walks_coords.slice(i).col(0);
+      for (int j = 0; j < walk_length; j++) {
+        // Ensemble-average MSD
+        walk_step = walks_coords.slice(i).col(j);
+        eaMSD_all(j, i) += std::pow(walk_step(0) - walk_origin(0), 2)
+                            + std::pow(walk_step(1) - walk_origin(1), 2);
+        // Time-average MSD
+        taMSD(j, i) = TAMSD(walks_coords.slice(i), walk_length, j);
+
+        // Ensemble-time-average MSD
+        eataMSD_all(j, i) = TAMSD(walks_coords.slice(i), j, 1);
+      }
+    }
+    eaMSD = arma::mean(eaMSD_all, 1);
+    eataMSD = arma::mean(eataMSD_all, 1);
+    return;
+  }
+
   double TAMSD(const arma::mat &walk, int t, int delta) {
     double integral = 0.;
     int diff = t - delta;
@@ -221,29 +251,6 @@ private:
                     + std::pow(walk(1, i + delta) - walk(1, i), 2);
     }
     return integral / diff;
-  }
-
-  void AnalyseWalks() {
-    // Zero the placeholders
-    eaMSD.zeros();
-    taMSD.zeros();
-    eataMSD.zeros();
-    ergodicity.zeros();
-
-    // Ensemble average MSD
-    #pragma omp parallel for
-    for (int i = 0; i < n_walks; i++) {
-      arma::vec2 walk_origin, walk_step;
-      walk_origin = walks_coords.slice(i).col(0);
-      for (int j = 0; j < walk_length; j++) {
-        walk_step = walks_coords.slice(i).col(j);
-        eaMSD_all(j, i) += std::pow(walk_step(0) - walk_origin(0), 2)
-                            + std::pow(walk_step(1) - walk_origin(1), 2);
-        taMSD(j, i) = TAMSD(walks_coords.slice(i), walk_length, j);
-      }
-    }
-    eaMSD = arma::mean(eaMSD_all, 1);
-    return;
   }
 
   void RandomWalks() {
@@ -262,6 +269,7 @@ private:
       int pos;
       int count_loop = 0;
       int count_max = (N > 1E6) ? N : 1E6;
+      // Search for a random start position
       do {
         pos = latticeones(RandSample(RNG));
         // Check start position has >= 1 occupied nearest neighbours
