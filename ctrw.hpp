@@ -44,7 +44,8 @@ public:
                   int nwalks,
                   int nsteps,
                   double power_beta,
-                  double walk_noise) {
+                  double walk_noise,
+                  int walk_type) {
     // Initialize threshold
     threshold = pc;
 
@@ -53,6 +54,7 @@ public:
     walk_length = nsteps;
     beta = power_beta;
     noise = walk_noise;
+    walk_mode = walk_type;
 
     // Get dimensions
     L = size;
@@ -195,7 +197,7 @@ public:
   }
 
 private:
-  int L, N, EMPTY, lattice_mode, n_walks, walk_length, nearest;
+  int L, N, EMPTY, lattice_mode, n_walks, walk_length, nearest, walk_mode;
 
   arma::Col<T> lattice, occupation, walks, true_walks, first_row, last_row;
   arma::Mat<T> nn;
@@ -296,9 +298,26 @@ private:
   }
 
   void RandomWalks() {
+    arma::Col<T> latticeones;
+
     // Set up selection of random start point
-    arma::Col<T> latticeones = arma::regspace<arma::Col<T>>(0, N - 1);
-    latticeones = latticeones.elem( find(lattice != EMPTY) );
+    //  - on largest cluster, or
+    //  - on ALL clusters
+    if (walk_mode == 1) {
+      T lattice_min = lattice.elem( find(lattice > EMPTY) ).min();
+      arma::uvec index_min = arma::find(lattice == lattice_min);
+      arma::uvec biggest_cluster = arma::find(lattice == index_min(0));
+      int size_biggest_cluster = biggest_cluster.n_elem;
+      size_biggest_cluster++;
+      biggest_cluster.resize(size_biggest_cluster);
+      biggest_cluster(size_biggest_cluster - 1) = index_min(0);
+      latticeones = arma::regspace<arma::Col<T>>(0, N - 1);
+      latticeones = latticeones.elem( biggest_cluster );
+    }
+    else {
+      latticeones = arma::regspace<arma::Col<T>>(0, N - 1);
+      latticeones = latticeones.elem( find(lattice != EMPTY) );
+    }
     std::uniform_int_distribution<T> RandSample(0, static_cast<int>(latticeones.n_elem) - 1);
 
     arma::uvec boundary_detect(walk_length);

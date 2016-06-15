@@ -48,6 +48,7 @@ int main(int argc, const char * argv[]) {
   opt.add("1", 1, 1, 0, "Power-law beta", "-b", "-beta");
   opt.add("0", 0, 1, 0, "Gaussian noise on walks", "-g", "-gaussian");
 	opt.add("0", 0,	1, 0, "Random seed", "-s", "-seed");
+  opt.add("0", 0, 1, 0, "Walk type", "-t", "-type");
 
 	// Check for errors
 	opt.parse(argc, argv);
@@ -75,7 +76,7 @@ int main(int argc, const char * argv[]) {
 
   std::string outfile, lattice;
   double fraction, beta, noise;
-  int seed, size, walks, length;
+  int seed, size, walks, length, type;
 
   opt.get("-output")->getString(outfile);
   opt.get("-lattice")->getString(lattice);
@@ -86,7 +87,7 @@ int main(int argc, const char * argv[]) {
   opt.get("-seed")->getInt(seed);
   opt.get("-walks")->getInt(walks);
   opt.get("-nsteps")->getInt(length);
-
+  opt.get("-type")->getInt(type);
 
   // Check for argument errors
   if (fraction == 0. || fraction > 1.) {
@@ -106,10 +107,11 @@ int main(int argc, const char * argv[]) {
       fraction = 0.592746;
     }
   }
-  
+
   // Generate the lattice and run the walks
   CTRWfractal<int32_t> *sim = new CTRWfractal<int32_t>();
-  sim->Initialize(size, fraction, seed, lattice, walks, length, beta, noise);
+  sim->Initialize(size, fraction, seed, lattice, walks,
+                  length, beta, noise, type);
   sim->Run();
   sim->Save(outfile);
 
