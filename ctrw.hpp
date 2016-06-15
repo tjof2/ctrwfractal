@@ -300,7 +300,6 @@ private:
     arma::Col<T> latticeones = arma::regspace<arma::Col<T>>(0, N - 1);
     latticeones = latticeones.elem( find(lattice != EMPTY) );
     std::uniform_int_distribution<T> RandSample(0, static_cast<int>(latticeones.n_elem) - 1);
-    std::exponential_distribution<double> ExponentialDistribution(beta);
 
     arma::uvec boundary_detect(walk_length);
     arma::uvec true_boundary(walk_length);
@@ -366,12 +365,18 @@ private:
         }
       }
 
-      // Draw CTRW variates from exponential distribution
       ctrw_times.set_size(walk_length);
-      ctrw_times.imbue( [&]() { return ExponentialDistribution(RNG); } );
+      if (beta > 0.) {
+        // Draw CTRW variates from exponential distribution
+        std::exponential_distribution<double> ExponentialDistribution(beta);
+        ctrw_times.imbue( [&]() { return ExponentialDistribution(RNG); } );
 
-      // Transform to Pareto distribution and accumulate
-      ctrw_times = arma::cumsum(arma::exp(ctrw_times));
+        // Transform to Pareto distribution and accumulate
+        ctrw_times = arma::cumsum(arma::exp(ctrw_times));
+      }
+      else {
+        ctrw_times = arma::linspace<arma::vec>(1, walk_length, walk_length);
+      }
 
       // Only keep times within range [0, walk_length]
       arma::uvec temp_time_boundary = arma::find(ctrw_times >= walk_length, 1, "first");
