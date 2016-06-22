@@ -46,6 +46,13 @@ public:
                   double power_beta,
                   double walk_noise,
                   int walk_type) {
+                  
+    // Set up OMP
+	#if defined(_OPENMP)
+		omp_set_dynamic(0);
+		omp_set_num_threads(4);
+	#endif              
+                  
     // Initialize threshold
     threshold = pc;
 
