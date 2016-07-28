@@ -36,6 +36,9 @@
 
 # CMake Files
 
+# Shell
+*.sh
+
 # Programs
 fractalwalk
 
