@@ -46,6 +46,7 @@ int main(int argc, const char * argv[]) {
   opt.add("10", 1, 1, 0, "Simulate random walks on this lattice", "-w", "-walks");
   opt.add("1000", 1, 1, 0, "Length of random walks", "-n", "-nsteps");
   opt.add("1", 1, 1, 0, "Power-law beta", "-b", "-beta");
+  opt.add("1", 0, 1, 0, "Power-law scale", "-tau");
   opt.add("0", 0, 1, 0, "Gaussian noise on walks", "-g", "-gaussian");
 	opt.add("0", 0,	1, 0, "Random seed", "-s", "-seed");
   opt.add("0", 0, 1, 0, "Walk type", "-t", "-type");
@@ -75,13 +76,14 @@ int main(int argc, const char * argv[]) {
 	}
 
   std::string outfile, lattice;
-  double fraction, beta, noise;
+  double fraction, beta, noise, tau0;
   int seed, size, walks, length, type;
 
   opt.get("-output")->getString(outfile);
   opt.get("-lattice")->getString(lattice);
   opt.get("-fraction")->getDouble(fraction);
   opt.get("-beta")->getDouble(beta);
+  opt.get("-tau")->getDouble(tau0);
   opt.get("-gaussian")->getDouble(noise);
   opt.get("-dim")->getInt(size);
   opt.get("-seed")->getInt(seed);
@@ -111,7 +113,7 @@ int main(int argc, const char * argv[]) {
   // Generate the lattice and run the walks
   CTRWfractal<int32_t> *sim = new CTRWfractal<int32_t>();
   sim->Initialize(size, fraction, seed, lattice, walks,
-                  length, beta, noise, type);
+                  length, beta, tau0, noise, type);
   sim->Run();
   sim->Save(outfile);
 

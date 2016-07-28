@@ -44,15 +44,16 @@ public:
                   int nwalks,
                   int nsteps,
                   double power_beta,
+                  double power_tau,
                   double walk_noise,
                   int walk_type) {
-                  
+
     // Set up OMP
 	#if defined(_OPENMP)
 		omp_set_dynamic(0);
 		omp_set_num_threads(4);
-	#endif              
-                  
+	#endif
+
     // Initialize threshold
     threshold = pc;
 
@@ -60,6 +61,8 @@ public:
     n_walks = nwalks;
     walk_length = nsteps;
     beta = power_beta;
+    tau0 = power_tau;
+    sim_length = (tau0 < 1.) ? static_cast<int>(walk_length / tau0) : walk_length;
     noise = walk_noise;
     walk_mode = walk_type;
 
@@ -113,8 +116,8 @@ public:
     lattice.set_size(N);
     occupation.set_size(N);
     lattice_coords.set_size(3, N);
-    walks.set_size(walk_length);
-    ctrw_times.set_size(walk_length);
+    walks.set_size(sim_length);
+    ctrw_times.set_size(sim_length);
     true_walks.set_size(walk_length);
     walks_coords.set_size(2, walk_length, n_walks);
     eaMSD.set_size(walk_length);
@@ -204,7 +207,8 @@ public:
   }
 
 private:
-  int L, N, EMPTY, lattice_mode, n_walks, walk_length, nearest, walk_mode;
+  int L, N, EMPTY, lattice_mode, n_walks, walk_length, sim_length;
+  int nearest, walk_mode;
 
   arma::Col<T> lattice, occupation, walks, true_walks, first_row, last_row;
   arma::Mat<T> nn;
@@ -213,7 +217,7 @@ private:
   arma::mat analysis;
   arma::cube walks_coords;
 
-  double threshold, beta, run_time, noise;
+  double threshold, beta, tau0, run_time, noise;
   const double sqrt3 = 1.7320508075688772;
 
   pcg64 RNG;
@@ -327,8 +331,8 @@ private:
     }
     std::uniform_int_distribution<T> RandSample(0, static_cast<int>(latticeones.n_elem) - 1);
 
-    arma::uvec boundary_detect(walk_length);
-    arma::uvec true_boundary(walk_length);
+    arma::uvec boundary_detect(sim_length);
+    arma::uvec true_boundary(sim_length);
 
     // Simulate a random walk on the lattice
     for (int i = 0; i < n_walks; i++) {
@@ -352,13 +356,13 @@ private:
       // If stuck on a site with no nearest neighbours,
       // set the whole walk to that site
       if (count_loop == count_max) {
-        walks = pos * arma::ones<arma::Col<T>>(walk_length);
+        walks = pos * arma::ones<arma::Col<T>>(sim_length);
         boundary_detect.zeros();
       }
       else {
         walks(0) = pos;
         boundary_detect(0) = 0;
-        for (int j = 1; j < walk_length; j++) {
+        for (int j = 1; j < sim_length; j++) {
           arma::Col<T> neighbours = GetOccupiedNeighbours(pos);
           std::uniform_int_distribution<T> RandChoice(0, static_cast<int>(neighbours.n_elem) - 1);
           pos = neighbours(RandChoice(RNG));
@@ -391,17 +395,17 @@ private:
         }
       }
 
-      ctrw_times.set_size(walk_length);
+      ctrw_times.set_size(sim_length);
       if (beta > 0.) {
         // Draw CTRW variates from exponential distribution
         std::exponential_distribution<double> ExponentialDistribution(beta);
         ctrw_times.imbue( [&]() { return ExponentialDistribution(RNG); } );
 
         // Transform to Pareto distribution and accumulate
-        ctrw_times = arma::cumsum(arma::exp(ctrw_times));
+        ctrw_times = arma::cumsum(tau0 * arma::exp(ctrw_times));
       }
       else {
-        ctrw_times = arma::linspace<arma::vec>(1, walk_length, walk_length);
+        ctrw_times = arma::linspace<arma::vec>(1, sim_length, sim_length);
       }
 
       // Only keep times within range [0, walk_length]
