@@ -485,7 +485,7 @@ private:
           }
           lattice_coords(0, count) = xx;
           lattice_coords(1, count) = yy;
-          lattice_coords(2, count) = (lattice(count) == EMPTY) ? 0 : 1;
+          lattice_coords(2, count) = (lattice(count) == EMPTY) ? 0 : lattice(count);
           count++;
         }
       }
@@ -494,7 +494,22 @@ private:
       unit_cell(0) += 3/2;
       unit_cell(1) += sqrt3/2;
     }
-    // To-do - build lattice for square lattice
+    // Populate the square lattice coordinates
+    else if (lattice_mode == 0) {
+      int count = 0;
+      for (int i = 0; i < L; i++) {
+        for (int j = 0; j < L; j++) {
+          lattice_coords(0, count) = i;
+          lattice_coords(1, count) = j;
+          lattice_coords(2, count) = (lattice(count) == EMPTY) ? 0 : lattice(count);
+          count++;
+        }
+      }
+      // Get unit cell size
+      unit_cell = arma::max(lattice_coords, 1);
+      unit_cell(0) += 1;
+      unit_cell(1) += 1;
+    }
     return;
   }
 
