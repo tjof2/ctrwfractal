@@ -34,4 +34,4 @@ on the percolation cluster.
    Simulate w random walks on this lattice
 ```
 
-_Copyright (C) 2016 Tom Furnival._
+_Copyright (C) 2016-2019 Tom Furnival._
