@@ -55,9 +55,9 @@ class CTRWfractal:
         #   - Honeycomb:  0.697040230
 
         if self.threshold is None:
-            if latticeMode == 1:
+            if self.latticeMode == 1:
                 fraction = 0.697040230
-            elif latticeMode == 0:
+            elif self.latticeMode == 0:
                 fraction = 0.592746
         else:
             fraction = self.threshold
