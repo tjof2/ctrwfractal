@@ -43,25 +43,32 @@ template <typename T1, typename T2>
 class CTRWfractal
 {
 public:
-  CTRWfractal(const uint32_t L,
-              const uint32_t nWalks,
-              const uint32_t walkLength,
-              const double threshold,
-              const double beta,
-              const double tau0,
-              const double noise,
-              const uint8_t latticeMode,
-              const uint8_t walkMode,
-              const int nJobs) : L(L),
-                                 nWalks(nWalks),
-                                 walkLength(walkLength),
-                                 threshold(threshold),
-                                 beta(beta),
-                                 tau0(tau0),
-                                 noise(noise),
-                                 latticeMode(latticeMode),
-                                 walkMode(walkMode),
-                                 nJobs(nJobs)
+  CTRWfractal(
+      arma::Mat<T2> lattice,
+      arma::Cube<T2> walks,
+      arma::Mat<T2> analysis,
+      const uint32_t L,
+      const uint32_t nWalks,
+      const uint32_t walkLength,
+      const double threshold,
+      const double beta,
+      const double tau0,
+      const double noise,
+      const uint8_t latticeMode,
+      const uint8_t walkMode,
+      const int nJobs) : latticeCoords(lattice),
+                         walksCoords(walks),
+                         analysis(analysis),
+                         L(L),
+                         nWalks(nWalks),
+                         walkLength(walkLength),
+                         threshold(threshold),
+                         beta(beta),
+                         tau0(tau0),
+                         noise(noise),
+                         latticeMode(latticeMode),
+                         walkMode(walkMode),
+                         nJobs(nJobs)
   {
     simLength = (tau0 < 1.) ? static_cast<uint32_t>(walkLength / tau0) : walkLength;
 
@@ -174,22 +181,10 @@ public:
     return;
   }
 
-  void Save(std::string filename)
-  {
-    std::cout << std::endl
-              << "Saving files: " << std::endl;
-    latticeCoords.save(filename + ".cluster", arma::raw_binary);
-    std::cout << "   Cluster saved to:    " << filename << ".cluster"
-              << std::endl;
-    walksCoords.save(filename + ".walks", arma::raw_binary);
-    std::cout << "   Walks saved to:      " << filename << ".walks"
-              << std::endl;
-    analysis.save(filename + ".data", arma::raw_binary);
-    std::cout << "   Analysis saved to:   " << filename << ".data" << std::endl;
-    return;
-  }
-
 private:
+  arma::Mat<T2> latticeCoords, analysis;
+  arma::Cube<T2> walksCoords;
+
   uint32_t L, nWalks, walkLength;
   double threshold, beta, tau0, noise;
   uint8_t latticeMode, walkMode;
@@ -204,9 +199,7 @@ private:
   arma::Col<T1> lattice, occupation, walks, trueWalks, firstRow, lastRow;
   arma::Mat<T1> nn;
   arma::Col<T2> unitCell, ctrwTimes, eaMSD, eataMSD, ergodicity;
-  arma::Mat<T2> latticeCoords, eaMSDall, eataMSDall, taMSD;
-  arma::Mat<T2> analysis;
-  arma::Cube<T2> walksCoords;
+  arma::Mat<T2> eaMSDall, eataMSDall, taMSD;
 
   pcg64 RNG;
   std::uniform_int_distribution<uint32_t> UniformDistribution{0, 4294967294};
@@ -738,6 +731,44 @@ private:
       return pcg64(seedSource);
     }
   }
+};
+
+template <typename T>
+uint32_t CTRWwrapper(
+    arma::Mat<T> &lattice,
+    arma::Cube<T> &walks,
+    arma::Mat<T> &analysis,
+    const uint32_t gridSize,
+    const uint32_t nWalks,
+    const uint32_t walkLength,
+    const double threshold,
+    const double beta,
+    const double tau0,
+    const double noise,
+    const uint8_t latticeMode,
+    const uint8_t walkMode,
+    const int randomSeed,
+    const int nJobs)
+{
+  CTRWfractal<int32_t, T> *sim = new CTRWfractal<int32_t, T>(
+      lattice,
+      walks,
+      analysis,
+      gridSize,
+      nWalks,
+      walkLength,
+      threshold,
+      beta,
+      tau0,
+      noise,
+      latticeMode,
+      walkMode,
+      nJobs);
+
+  sim->Initialize(randomSeed);
+  sim->Run();
+
+  return 0;
 };
 
 #endif
