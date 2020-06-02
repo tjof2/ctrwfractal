@@ -25,7 +25,7 @@ extensions = [
     Extension(
         "ctrwfractal._ctrwfractal",
         sources=["ctrwfractal/_ctrwfractal.pyx"],
-        include_dirs=["ctrwfractal/", np.get_include()],
+        include_dirs=["ctrwfractal/", "ctrwfractal/pcg/", np.get_include()],
         libraries=["openblas", "lapack", "armadillo"],
         language="c++",
         extra_compile_args=[

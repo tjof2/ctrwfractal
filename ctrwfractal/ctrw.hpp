@@ -44,9 +44,6 @@ class CTRWfractal
 {
 public:
   CTRWfractal(
-      arma::Mat<T2> lattice,
-      arma::Cube<T2> walks,
-      arma::Mat<T2> analysis,
       const uint32_t L,
       const uint32_t nWalks,
       const uint32_t walkLength,
@@ -56,10 +53,7 @@ public:
       const double noise,
       const uint8_t latticeMode,
       const uint8_t walkMode,
-      const int nJobs) : latticeCoords(lattice),
-                         walksCoords(walks),
-                         analysis(analysis),
-                         L(L),
+      const int nJobs) : L(L),
                          nWalks(nWalks),
                          walkLength(walkLength),
                          threshold(threshold),
@@ -75,14 +69,12 @@ public:
     walks.set_size(simLength); // Set array sizes
     ctrwTimes.set_size(simLength);
     trueWalks.set_size(walkLength);
-    walksCoords.set_size(2, walkLength, nWalks);
     eaMSD.set_size(walkLength);
     eaMSDall.set_size(walkLength - 1, nWalks);
     taMSD.set_size(walkLength - 1, nWalks);
     eataMSD.set_size(walkLength - 1);
     eataMSDall.set_size(walkLength - 1, nWalks);
     ergodicity.set_size(walkLength - 1);
-    analysis.set_size(walkLength - 1, nWalks + 3);
   };
 
   ~CTRWfractal(){};
@@ -123,7 +115,10 @@ public:
     EMPTY = (-N - 1);    // Define empty index
     lattice.set_size(N); // Set array sizes
     occupation.set_size(N);
-    latticeCoords.set_size(3, N);
+
+    latticeCoords.set_size(3, N); // These are exported
+    analysis.set_size(walkLength - 1, nWalks + 3);
+    walksCoords.set_size(2, walkLength, nWalks);
 
     return;
   }
@@ -181,10 +176,10 @@ public:
     return;
   }
 
-private:
   arma::Mat<T2> latticeCoords, analysis;
   arma::Cube<T2> walksCoords;
 
+private:
   uint32_t L, nWalks, walkLength;
   double threshold, beta, tau0, noise;
   uint8_t latticeMode, walkMode;
@@ -279,6 +274,7 @@ private:
     std::normal_distribution<T2> NormalDistribution(0, noise);
     noiseCube.imbue([&]() { return NormalDistribution(RNG); });
     walksCoords += noiseCube;
+
     return;
   }
 
@@ -306,6 +302,7 @@ private:
       latticeOnes = arma::regspace<arma::Col<T1>>(0, N - 1);
       latticeOnes = latticeOnes.elem(find(lattice != EMPTY));
     }
+
     std::uniform_int_distribution<T1> RandSample(0, static_cast<uint32_t>(latticeOnes.n_elem) - 1);
 
     arma::uvec boundaryDetect(simLength);
@@ -736,8 +733,8 @@ private:
 template <typename T>
 uint32_t CTRWwrapper(
     arma::Mat<T> &lattice,
-    arma::Cube<T> &walks,
     arma::Mat<T> &analysis,
+    arma::Cube<T> &walks,
     const uint32_t gridSize,
     const uint32_t nWalks,
     const uint32_t walkLength,
@@ -751,9 +748,6 @@ uint32_t CTRWwrapper(
     const int nJobs)
 {
   CTRWfractal<int32_t, T> *sim = new CTRWfractal<int32_t, T>(
-      lattice,
-      walks,
-      analysis,
       gridSize,
       nWalks,
       walkLength,
@@ -767,6 +761,10 @@ uint32_t CTRWwrapper(
 
   sim->Initialize(randomSeed);
   sim->Run();
+
+  lattice = sim->latticeCoords;
+  analysis = sim->analysis;
+  walks = sim->walksCoords;
 
   return 0;
 };

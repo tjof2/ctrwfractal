@@ -45,6 +45,24 @@ cdef extern from "<armadillo>" namespace "arma" nogil:
 
         T *memptr() nogil
 
+    cdef cppclass Cube[T]:
+        const uword n_rows
+        const uword n_cols
+        const uword n_slices
+        const uword n_elem
+
+        Cube() nogil
+
+        Cube(uword n_rows, uword n_cols, uword n_slices) nogil
+
+        Cube(T* aux_mem,
+            uword n_rows,
+            uword n_cols,
+            uword n_slices,
+            bool copy_aux_mem,
+            bool strict) nogil
+
+        T *memptr() nogil
 
 cdef inline Mat[double] numpy_to_mat_d(np.ndarray[double, ndim=2] X):
     if not X.flags.f_contiguous:
@@ -56,6 +74,18 @@ cdef inline Mat[float] numpy_to_mat_f(np.ndarray[float, ndim=2] X):
     if not X.flags.f_contiguous:
         X = X.copy(order="F")
     return Mat[float](<float*> X.data, X.shape[0], X.shape[1], False, False)
+
+
+cdef inline Cube[double] numpy_to_cube_d(np.ndarray[double, ndim=3] X):
+    if not X.flags.f_contiguous:
+        X = X.copy(order="F")
+    return Cube[double](<double*> X.data, X.shape[0], X.shape[1], X.shape[2], False, False)
+
+
+cdef inline Cube[float] numpy_to_cube_f(np.ndarray[float, ndim=3] X):
+    if not X.flags.f_contiguous:
+        X = X.copy(order="F")
+    return Cube[float](<float*> X.data, X.shape[0], X.shape[1], X.shape[2], False, False)
 
 
 @cython.boundscheck(False)
@@ -85,6 +115,38 @@ cdef inline np.ndarray[float, ndim=2] numpy_from_mat_f(Mat[float] &m):
     pM = m.memptr()
 
     for i in range(m.n_rows * m.n_cols):
+        pArr[i] = pM[i]
+
+    return arr
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef inline np.ndarray[double, ndim=3] numpy_from_cube_d(Cube[double] &m):
+    cdef np.ndarray[double, ndim=3] arr
+    cdef double *pArr
+    cdef double *pM
+    arr = np.ndarray((m.n_rows, m.n_cols, m.n_slices), dtype=np.float64, order='F')
+    pArr = <double *>arr.data
+    pM = m.memptr()
+
+    for i in range(m.n_rows * m.n_cols * m.n_slices):
+        pArr[i] = pM[i]
+
+    return arr
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef inline np.ndarray[float, ndim=3] numpy_from_cube_f(Cube[float] &m):
+    cdef np.ndarray[float, ndim=3] arr
+    cdef float *pArr
+    cdef float *pM
+    arr = np.ndarray((m.n_rows, m.n_cols, m.n_slices), dtype=np.float32, order='F')
+    pArr = <float *>arr.data
+    pM = m.memptr()
+
+    for i in range(m.n_rows * m.n_cols * m.n_slices):
         pArr[i] = pM[i]
 
     return arr

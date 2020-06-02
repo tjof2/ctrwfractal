@@ -23,44 +23,73 @@ import numpy as np
 cimport numpy as np
 cimport cython
 from libcpp cimport bool
-from libc.stdint cimport uint32_t
+from libc.stdint cimport uint8_t, uint32_t
 
-from .arma cimport Mat, numpy_to_mat_d, numpy_from_mat_d, numpy_to_mat_f, numpy_from_mat_f
+from .arma cimport (
+    Mat,
+    Cube,
+    numpy_to_mat_d,
+    numpy_from_mat_d,
+    numpy_to_mat_f,
+    numpy_from_mat_f,
+    numpy_to_cube_d,
+    numpy_from_cube_d,
+    numpy_to_cube_f,
+    numpy_from_cube_f
+)
 
 
 cdef extern from "ctrw.hpp":
-    cdef uint32_t c_ctrw "CTRWwrapper"[T] (Mat[T] &, Mat[T] &, Mat[T] &,
-                                            double, double, bool, double, double,
-                                            uint32_t, uint32_t, int)
+    cdef uint32_t c_ctrw "CTRWwrapper"[T] (Mat[T] &, Mat[T] &, Cube[T] &,
+                                           uint32_t, uint32_t, uint32_t,
+                                           double, double, double, double,
+                                           uint8_t, uint8_t, int, int)
 
 
-def ctrw_fractal_double(np.ndarray[np.float64_t, ndim=2] X,
-                    double lambda1 = 1.0,
-                    double tol = 1e-7,
-                    bool subsample = False,
-                    double sampleL = 1.0,
-                    double sampleH = 1.0,
-                    uint32_t maxRank = 10,
-                    uint32_t maxIter = 1000,
-                    int randomSeed = -1):
+def ctrw_fractal_double(uint32_t gridSize = 128,
+                        uint32_t nWalks = 0,
+                        uint32_t walkLength = 1,
+                        double threshold = -1.0,
+                        double beta = 1.0,
+                        double tau0 = 1.0,
+                        double noise = 0.0,
+                        uint8_t latticeMode = 0,
+                        uint8_t walkMode = 0,
+                        int randomSeed = 0,
+                        int nJobs = -1):
 
-    cdef np.ndarray[double, ndim=2] A
-    cdef np.ndarray[double, ndim=2] E
+    cdef np.ndarray[double, ndim=2] lattice
+    cdef np.ndarray[double, ndim=2] analysis
+    cdef np.ndarray[double, ndim=3] walks
 
-    cdef Mat[double] _A
-    cdef Mat[double] _E
+    cdef Mat[double] _lattice
+    cdef Mat[double] _analysis
+    cdef Cube[double] _walks
 
-    cdef uint32_t rankEstimate
+    cdef uint32_t result
 
-    _A = Mat[double]()
-    _E = Mat[double]()
+    _lattice = Mat[double]()
+    _analysis = Mat[double]()
+    _walks = Cube[double]()
 
-    rankEstimate = c_rosl_lrs[double](numpy_to_mat_d(X), _A, _E,
-                                      lambda1, tol, subsample, sampleL, sampleH,
-                                      maxRank, maxIter, randomSeed)
+    result = c_ctrw[double](_lattice,
+                            _analysis,
+                            _walks,
+                            gridSize,
+                            nWalks,
+                            walkLength,
+                            threshold,
+                            beta,
+                            tau0,
+                            noise,
+                            latticeMode,
+                            walkMode,
+                            nJobs,
+                            randomSeed)
 
-    A = numpy_from_mat_d(_A)
-    E = numpy_from_mat_d(_E)
+    lattice = numpy_from_mat_d(_lattice)
+    analysis = numpy_from_mat_d(_analysis)
+    walks = numpy_from_cube_d(_walks)
 
-    return A, E, rankEstimate
+    return lattice, analysis, walks, result
 
