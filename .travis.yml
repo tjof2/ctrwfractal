@@ -1,22 +1,35 @@
-# Travis file
+language: python
 
-language: generic
+env:
+  global:
+    - PIP_REQS="numpy cython coverage pytest pytest-cov coveralls"
 
 before_install:
   - if [${TRAVIS_OS_NAME} == "linux"]; then sudo apt-get update -qq; fi
-  - ./install-dependencies.sh
+  - sh ./install-dependencies.sh
 
 matrix:
   include:
-    - os: linux
+    - name: "Linux, 3.7, pip, gcc"
+      env: COMPILER_NAME=gcc CXX=g++-7 CC=gcc-7
+      python: 3.7
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['g++-7', 'libblas-dev', 'liblapack-dev', 'libopenblas-dev']
+    - name: "Linux, 3.8, pip, gcc"
       env: COMPILER_NAME=gcc CXX=g++-7 CC=gcc-7
+      python: 3.8
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-7', 'libblas-dev', 'liblapack-dev', 'libopenblas-dev']
 
 script:
-  - make CXX=$CXX
+  - which python
+  - pip install --upgrade $PIP_REQS
+  - pip install --upgrade -e .
+#   - pytest --cov=robustpca robustpca/
 
-notifications:
-  email: false
+# after_success:
+#   - coveralls
