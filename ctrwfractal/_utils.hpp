@@ -22,8 +22,25 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
+#include <iostream>
+#include <iomanip>
 #include <thread>
 #include <vector>
+#include <utility>
+
+template <typename Arg, typename... Args>
+void Print(std::ostream &out, Arg &&arg, Args &&... args)
+{
+    out << std::forward<Arg>(arg);
+    using expander = int[];
+    (void)expander{0, (void(out << std::forward<Args>(args)), 0)...};
+}
+
+template <typename Arg, typename... Args>
+void PrintFixed(const uint32_t precision, Arg &&arg, Args &&... args)
+{
+    Print(std::cout, std::fixed, std::setprecision(precision), arg, args...);
+}
 
 template <typename Function, typename Integer_Type>
 void parallel(Function const &func,

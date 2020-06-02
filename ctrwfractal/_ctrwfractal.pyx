@@ -39,7 +39,7 @@ from .arma cimport (
 )
 
 
-cdef extern from "ctrw.hpp":
+cdef extern from "_ctrw.hpp":
     cdef uint32_t c_ctrw "CTRWwrapper"[T] (Mat[T] &, Mat[T] &, Cube[T] &,
                                            uint32_t, uint32_t, uint32_t,
                                            double, double, double, double,
@@ -50,7 +50,7 @@ def ctrw_fractal_double(uint32_t gridSize = 128,
                         uint32_t nWalks = 0,
                         uint32_t walkLength = 1,
                         double threshold = -1.0,
-                        double beta = 1.0,
+                        double beta = 0.0,
                         double tau0 = 1.0,
                         double noise = 0.0,
                         uint8_t latticeMode = 0,
