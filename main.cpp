@@ -32,14 +32,6 @@
 
 int main(int argc, const char *argv[])
 {
-  std::cout << std::string(30, '-') << std::endl;
-  std::cout << "CTRWfractal" << std::endl
-            << std::endl;
-  std::cout << "Author: Tom Furnival" << std::endl;
-  std::cout << "Email:  tjof2@cam.ac.uk" << std::endl;
-  std::cout << std::string(30, '-') << std::endl
-            << std::endl;
-
   ez::ezOptionParser opt;
   opt.overview = "\nCTRWfractal";
   opt.syntax = "./fractalwalk";
@@ -134,9 +126,9 @@ int main(int argc, const char *argv[])
   }
 
   // Generate the lattice and run the walks
-  CTRWfractal<int32_t> *sim = new CTRWfractal<int32_t>();
-  sim->Initialize(size, fraction, seed, lattice, walks, length, beta, tau0,
-                  noise, type);
+  CTRWfractal<int32_t> *sim = new CTRWfractal<int32_t>(
+      size, walks, length, fraction, beta, tau0, noise, type);
+  sim->Initialize(lattice, seed);
   sim->Run();
   sim->Save(outfile);
 

@@ -40,42 +40,40 @@ template <class T>
 class CTRWfractal
 {
 public:
-  CTRWfractal(){};
+  CTRWfractal(const int L,
+              const int nWalks,
+              const int walkLength,
+              const double threshold,
+              const double beta,
+              const double tau0,
+              const double noise,
+              const int walkMode) : L(L),
+                                    nWalks(nWalks),
+                                    walkLength(walkLength),
+                                    threshold(threshold),
+                                    beta(beta),
+                                    tau0(tau0),
+                                    noise(noise),
+                                    walkMode(walkMode)
+  {
+    simLength = (tau0 < 1.) ? static_cast<int>(walkLength / tau0) : walkLength;
+  };
 
   ~CTRWfractal(){};
 
-  void Initialize(int size,
-                  double pc,
-                  int rngseed,
-                  std::string type,
-                  int nwalks,
-                  int nsteps,
-                  double power_beta,
-                  double power_tau,
-                  double walk_noise,
-                  int walk_type)
+  void Initialize(std::string type, int rngseed)
   {
-
-    threshold = pc;
-    n_walks = nwalks;
-    walk_length = nsteps;
-    beta = power_beta;
-    tau0 = power_tau;
-    sim_length = (tau0 < 1.) ? static_cast<int>(walk_length / tau0) : walk_length;
-    noise = walk_noise;
-    walk_mode = walk_type;
-
-    L = size; // Get dimensions
+    RNG = SeedRNG(rngseed); // Seed the generator
 
     auto tStart = std::chrono::high_resolution_clock::now();
     std::cout << "Searching neighbours...    ";
 
     if (type.compare("Honeycomb") == 0)
     {
-      lattice_mode = 1;
-      nearest = 3;
+      latticeMode = 1;
+      neighbourCount = 3;
       N = L * L * 4;
-      nn.set_size(nearest, N);
+      nn.set_size(neighbourCount, N);
       firstRow.set_size(2 * L);
       lastRow.set_size(2 * L);
       for (int i = 1; i <= 2 * L; i++)
@@ -87,10 +85,10 @@ public:
     }
     else if (type.compare("Square") == 0)
     {
-      lattice_mode = 0;
-      nearest = 4;
+      latticeMode = 0;
+      neighbourCount = 4;
       N = L * L;
-      nn.set_size(nearest, N);
+      nn.set_size(neighbourCount, N);
       BoundariesSquare();
     }
     else
@@ -107,19 +105,17 @@ public:
     lattice.set_size(N); // Set array sizes
     occupation.set_size(N);
     latticeCoords.set_size(3, N);
-    walks.set_size(sim_length);
-    ctrw_times.set_size(sim_length);
-    trueWalks.set_size(walk_length);
-    walksCoords.set_size(2, walk_length, n_walks);
-    eaMSD.set_size(walk_length);
-    eaMSD_all.set_size(walk_length - 1, n_walks);
-    taMSD.set_size(walk_length - 1, n_walks);
-    eataMSD.set_size(walk_length - 1);
-    eataMSD_all.set_size(walk_length - 1, n_walks);
-    ergodicity.set_size(walk_length - 1);
-    analysis.set_size(walk_length - 1, n_walks + 3);
-
-    RNG = SeedRNG(rngseed); // Seed the generator
+    walks.set_size(simLength);
+    ctrwTimes.set_size(simLength);
+    trueWalks.set_size(walkLength);
+    walksCoords.set_size(2, walkLength, nWalks);
+    eaMSD.set_size(walkLength);
+    eaMSDall.set_size(walkLength - 1, nWalks);
+    taMSD.set_size(walkLength - 1, nWalks);
+    eataMSD.set_size(walkLength - 1);
+    eataMSDall.set_size(walkLength - 1, nWalks);
+    ergodicity.set_size(walkLength - 1);
+    analysis.set_size(walkLength - 1, nWalks + 3);
 
     return;
   }
@@ -148,7 +144,7 @@ public:
     tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart);
     std::cout << std::setprecision(6) << tElapsed.count() * 1E-6 << " s" << std::endl;
 
-    if (n_walks > 0) // Now run the random walks and analyse
+    if (nWalks > 0) // Now run the random walks and analyse
     {
       std::cout << std::endl;
       std::cout << "Simulating random walks... ";
@@ -194,18 +190,20 @@ public:
   }
 
 private:
-  int L, N, EMPTY, lattice_mode, n_walks, walk_length, sim_length;
-  int nearest, walk_mode;
+  int L, nWalks, walkLength;
+  double threshold, beta, tau0, noise;
+  int walkMode;
+
+  int N, EMPTY, latticeMode, simLength;
+  uint8_t neighbourCount;
+  const double sqrt3 = 1.7320508075688772;
 
   arma::Col<T> lattice, occupation, walks, trueWalks, firstRow, lastRow;
   arma::Mat<T> nn;
-  arma::vec unitCell, ctrw_times, eaMSD, eataMSD, ergodicity;
-  arma::mat latticeCoords, eaMSD_all, eataMSD_all, taMSD;
+  arma::vec unitCell, ctrwTimes, eaMSD, eataMSD, ergodicity;
+  arma::mat latticeCoords, eaMSDall, eataMSDall, taMSD;
   arma::mat analysis;
   arma::cube walksCoords;
-
-  double threshold, beta, tau0, tElapsed, noise;
-  const double sqrt3 = 1.7320508075688772;
 
   pcg64 RNG;
   std::uniform_int_distribution<uint32_t> UniformDistribution{0, 4294967294};
@@ -214,53 +212,53 @@ private:
   {
     // Zero the placeholders
     eaMSD.zeros();
-    eaMSD_all.zeros();
+    eaMSDall.zeros();
     taMSD.zeros();
     eataMSD.zeros();
-    eataMSD_all.zeros();
+    eataMSDall.zeros();
     ergodicity.zeros();
 
-    for (int i = 0; i < n_walks; i++)
+    for (int i = 0; i < nWalks; i++)
     {
-      arma::vec2 walk_origin, walk_step;
-      walk_origin = walksCoords.slice(i).col(0);
-      for (int j = 1; j < walk_length; j++)
+      arma::vec2 walkOrigin, walkStep;
+      walkOrigin = walksCoords.slice(i).col(0);
+      for (int j = 1; j < walkLength; j++)
       {
         // Ensemble-average MSD
-        walk_step = walksCoords.slice(i).col(j);
-        eaMSD_all(j - 1, i) = std::pow(walk_step(0) - walk_origin(0), 2) +
-                              std::pow(walk_step(1) - walk_origin(1), 2);
+        walkStep = walksCoords.slice(i).col(j);
+        eaMSDall(j - 1, i) = std::pow(walkStep(0) - walkOrigin(0), 2) +
+                             std::pow(walkStep(1) - walkOrigin(1), 2);
         // Time-average MSD
-        taMSD(j - 1, i) = TAMSD(walksCoords.slice(i), walk_length, j);
+        taMSD(j - 1, i) = TAMSD(walksCoords.slice(i), walkLength, j);
 
         // Ensemble-time-average MSD
-        eataMSD_all(j - 1, i) = TAMSD(walksCoords.slice(i), j, 1);
+        eataMSDall(j - 1, i) = TAMSD(walksCoords.slice(i), j, 1);
       }
     }
     // Check for NaNs
     eaMSD.elem(arma::find_nonfinite(eaMSD)).zeros();
     taMSD.elem(arma::find_nonfinite(taMSD)).zeros();
-    eaMSD_all.elem(arma::find_nonfinite(eataMSD_all)).zeros();
+    eaMSDall.elem(arma::find_nonfinite(eataMSDall)).zeros();
 
     // Take means
-    eaMSD = arma::mean(eaMSD_all, 1);
-    eataMSD = arma::mean(eataMSD_all, 1);
+    eaMSD = arma::mean(eaMSDall, 1);
+    eataMSD = arma::mean(eataMSDall, 1);
 
     // Another check for NaNs
     eataMSD.elem(arma::find_nonfinite(eataMSD)).zeros();
 
     // Ergodicity breaking over s
-    arma::mat mean_taMSD = arma::square(arma::mean(taMSD, 1));
-    arma::mat mean_taMSD2 = arma::mean(arma::square(taMSD), 1);
-    ergodicity = (mean_taMSD2 - mean_taMSD) / mean_taMSD;
+    arma::mat meanTAMSD = arma::square(arma::mean(taMSD, 1));
+    arma::mat meanTAMSD2 = arma::mean(arma::square(taMSD), 1);
+    ergodicity = (meanTAMSD2 - meanTAMSD) / meanTAMSD;
     ergodicity.elem(arma::find_nonfinite(ergodicity)).zeros();
-    ergodicity /= arma::regspace<arma::vec>(1, walk_length - 1);
+    ergodicity /= arma::regspace<arma::vec>(1, walkLength - 1);
     ergodicity.elem(arma::find_nonfinite(ergodicity)).zeros();
 
     analysis.col(0) = eaMSD;
     analysis.col(1) = eataMSD;
     analysis.col(2) = ergodicity;
-    analysis.cols(3, n_walks + 2) = taMSD;
+    analysis.cols(3, nWalks + 2) = taMSD;
 
     return;
   }
@@ -279,78 +277,76 @@ private:
 
   void AddNoise()
   {
-    arma::cube noise_cube(size(walksCoords));
+    arma::cube noiseCube(size(walksCoords));
     std::normal_distribution<double> NormalDistribution(0, noise);
-    noise_cube.imbue([&]() { return NormalDistribution(RNG); });
-    walksCoords += noise_cube;
+    noiseCube.imbue([&]() { return NormalDistribution(RNG); });
+    walksCoords += noiseCube;
     return;
   }
 
   void RandomWalks()
   {
-    arma::Col<T> latticeones;
+    arma::Col<T> latticeOnes;
 
     // Set up selection of random start point
     //  - on largest cluster, or
     //  - on ALL clusters
-    if (walk_mode == 1)
+    if (walkMode == 1)
     {
-      T lattice_min = lattice.elem(find(lattice > EMPTY)).min();
-      arma::uvec index_min = arma::find(lattice == lattice_min);
-      arma::uvec biggest_cluster = arma::find(lattice == index_min(0));
-      int size_biggest_cluster = biggest_cluster.n_elem;
-      size_biggest_cluster++;
-      biggest_cluster.resize(size_biggest_cluster);
-      biggest_cluster(size_biggest_cluster - 1) = index_min(0);
-      latticeones = arma::regspace<arma::Col<T>>(0, N - 1);
-      latticeones = latticeones.elem(biggest_cluster);
+      T latticeMin = lattice.elem(find(lattice > EMPTY)).min();
+      arma::uvec idxMin = arma::find(lattice == latticeMin);
+      arma::uvec largestCluster = arma::find(lattice == idxMin(0));
+      int largestClusterSize = largestCluster.n_elem;
+      largestClusterSize++;
+      largestCluster.resize(largestClusterSize);
+      largestCluster(largestClusterSize - 1) = idxMin(0);
+      latticeOnes = arma::regspace<arma::Col<T>>(0, N - 1);
+      latticeOnes = latticeOnes.elem(largestCluster);
     }
     else
     {
-      latticeones = arma::regspace<arma::Col<T>>(0, N - 1);
-      latticeones = latticeones.elem(find(lattice != EMPTY));
+      latticeOnes = arma::regspace<arma::Col<T>>(0, N - 1);
+      latticeOnes = latticeOnes.elem(find(lattice != EMPTY));
     }
-    std::uniform_int_distribution<T> RandSample(0, static_cast<int>(latticeones.n_elem) - 1);
+    std::uniform_int_distribution<T> RandSample(0, static_cast<int>(latticeOnes.n_elem) - 1);
 
-    arma::uvec boundary_detect(sim_length);
-    arma::uvec true_boundary(sim_length);
+    arma::uvec boundaryDetect(simLength);
+    arma::uvec boundaryTrue(simLength);
 
-    std::cout << "here" << std::endl;
-
-    for (int i = 0; i < n_walks; i++) // Simulate a random walk on the lattice
+    for (int i = 0; i < nWalks; i++) // Simulate a random walk on the lattice
     {
-      bool ok_start = false;
+      bool okStart = false;
       int pos;
-      int count_loop = 0;
-      int count_max = (N > 1E6) ? N : 1E6;
+      int countLoop = 0;
+      int countMax = (N > 1E6) ? N : 1E6;
 
       do // Search for a random start position
       {
-        pos = latticeones(RandSample(RNG));
+        pos = latticeOnes(RandSample(RNG));
         // Check start position has >= 1 occupied nearest neighbours
         arma::Col<T> neighbours = GetOccupiedNeighbours(pos);
-        if (neighbours.n_elem > 0 || count_loop >= count_max)
+        if (neighbours.n_elem > 0 || countLoop >= countMax)
         {
-          ok_start = true;
+          okStart = true;
         }
         else
         {
-          count_loop++;
+          countLoop++;
         }
-      } while (!ok_start);
+      } while (!okStart);
 
       // If stuck on a site with no nearest neighbours,
       // set the whole walk to that site
-      if (count_loop == count_max)
+      if (countLoop == countMax)
       {
-        walks = pos * arma::ones<arma::Col<T>>(sim_length);
-        boundary_detect.zeros();
+        walks = pos * arma::ones<arma::Col<T>>(simLength);
+        boundaryDetect.zeros();
       }
       else
       {
         walks(0) = pos;
-        boundary_detect(0) = 0;
-        for (int j = 1; j < sim_length; j++)
+        boundaryDetect(0) = 0;
+        for (int j = 1; j < simLength; j++)
         {
           arma::Col<T> neighbours = GetOccupiedNeighbours(pos);
           std::uniform_int_distribution<T> RandChoice(0, static_cast<int>(neighbours.n_elem) - 1);
@@ -360,89 +356,87 @@ private:
           if (arma::any(firstRow == walks(j - 1)) &&
               arma::any(lastRow == pos)) // Walks that hit the top boundary
           {
-            boundary_detect(j) = 1;
+            boundaryDetect(j) = 1;
           }
 
           else if (arma::any(lastRow == walks(j - 1)) &&
                    arma::any(firstRow == pos)) // Walks that hit the bottom boundary
           {
-            boundary_detect(j) = 2;
+            boundaryDetect(j) = 2;
           }
           else if (walks(j - 1) >= (N - L) && pos < L) // Walks that hit the RHS
           {
-            boundary_detect(j) = 3;
+            boundaryDetect(j) = 3;
           }
           else if (walks(j - 1) < L && pos >= (N - L)) // Walks that hit the LHS
           {
-            boundary_detect(j) = 4;
+            boundaryDetect(j) = 4;
           }
 
           else
           {
-            boundary_detect(j) = 0;
+            boundaryDetect(j) = 0;
           }
         }
       }
 
-      ctrw_times.set_size(sim_length);
+      ctrwTimes.set_size(simLength);
       if (beta > 0.)
       {
         // Draw CTRW variates from exponential distribution
         std::exponential_distribution<double> ExponentialDistribution(beta);
-        ctrw_times.imbue([&]() { return ExponentialDistribution(RNG); });
+        ctrwTimes.imbue([&]() { return ExponentialDistribution(RNG); });
 
         // Transform to Pareto distribution and accumulate
-        ctrw_times = arma::cumsum(tau0 * arma::exp(ctrw_times));
+        ctrwTimes = arma::cumsum(tau0 * arma::exp(ctrwTimes));
       }
       else
       {
-        ctrw_times = arma::linspace<arma::vec>(1, sim_length, sim_length);
+        ctrwTimes = arma::linspace<arma::vec>(1, simLength, simLength);
       }
 
-      // Only keep times within range [0, walk_length]
-      arma::uvec temp_time_boundary = arma::find(ctrw_times >= walk_length, 1, "first");
-      int time_boundary = temp_time_boundary(0);
-      ctrw_times = ctrw_times(arma::span(0, time_boundary));
-      ctrw_times(time_boundary) = walk_length;
+      // Only keep times within range [0, walkLength]
+      arma::uvec boundaryTime_ = arma::find(ctrwTimes >= walkLength, 1, "first");
+      int boundaryTime = boundaryTime_(0);
+      ctrwTimes = ctrwTimes(arma::span(0, boundaryTime));
+      ctrwTimes(boundaryTime) = walkLength;
 
       int counter = 0;
-      true_boundary.zeros();
-      for (int j = 0; j < walk_length; j++) // Subordinate fractal walk with CTRW
+      boundaryTrue.zeros();
+      for (int j = 0; j < walkLength; j++) // Subordinate fractal walk with CTRW
       {
-        if (j > ctrw_times(counter))
+        if (j > ctrwTimes(counter))
         {
           counter++;
-          true_boundary(j) = boundary_detect(counter);
+          boundaryTrue(j) = boundaryDetect(counter);
         }
         trueWalks(j) = walks(counter);
       }
 
-      int nx_cell = 0;
-      int ny_cell = 0;
-      for (int nstep = 0; nstep < walk_length; nstep++) // Convert the walk to the coordinate system
+      int nxCell = 0;
+      int nyCell = 0;
+      for (int nstep = 0; nstep < walkLength; nstep++) // Convert the walk to the coordinate system
       {
-        switch (true_boundary(nstep))
+        switch (boundaryTrue(nstep))
         {
         case 1:
-          ny_cell++;
+          nyCell++;
           break;
         case 2:
-          ny_cell--;
+          nyCell--;
           break;
         case 3:
-          nx_cell++;
+          nxCell++;
           break;
         case 4:
-          nx_cell--;
+          nxCell--;
           break;
         case 0:
         default:
           break;
         }
-        walksCoords(0, nstep, i) =
-            latticeCoords(0, trueWalks(nstep)) + nx_cell * unitCell(0);
-        walksCoords(1, nstep, i) =
-            latticeCoords(1, trueWalks(nstep)) + ny_cell * unitCell(1);
+        walksCoords(0, nstep, i) = latticeCoords(0, trueWalks(nstep)) + nxCell * unitCell(0);
+        walksCoords(1, nstep, i) = latticeCoords(1, trueWalks(nstep)) + nyCell * unitCell(1);
       }
     }
     return;
@@ -450,17 +444,17 @@ private:
 
   void BuildLattice()
   {
-    if (lattice_mode == 1) // Populate the honeycomb lattice coordinates
+    if (latticeMode == 1) // Populate the honeycomb lattice coordinates
     {
       double xx, yy;
       int count = 0;
-      int cur_col = 0;
+      int curCol = 0;
       for (int i = 0; i < 4 * L; i++)
       {
         for (int j = L - 1; j >= 0; j--)
         {
-          cur_col = i % 4;
-          switch (cur_col)
+          curCol = i % 4;
+          switch (curCol)
           {
           case 0:
           default:
@@ -482,8 +476,7 @@ private:
           }
           latticeCoords(0, count) = xx;
           latticeCoords(1, count) = yy;
-          latticeCoords(2, count) =
-              (lattice(count) == EMPTY) ? 0 : lattice(count);
+          latticeCoords(2, count) = (lattice(count) == EMPTY) ? 0 : lattice(count);
           count++;
         }
       }
@@ -493,7 +486,7 @@ private:
       unitCell(1) += sqrt3 / 2;
     }
 
-    else if (lattice_mode == 0) // Populate the square lattice coordinates
+    else if (latticeMode == 0) // Populate the square lattice coordinates
     {
       int count = 0;
       for (int i = 0; i < L; i++)
@@ -502,8 +495,7 @@ private:
         {
           latticeCoords(0, count) = i;
           latticeCoords(1, count) = j;
-          latticeCoords(2, count) =
-              (lattice(count) == EMPTY) ? 0 : lattice(count);
+          latticeCoords(2, count) = (lattice(count) == EMPTY) ? 0 : lattice(count);
           count++;
         }
       }
@@ -515,15 +507,15 @@ private:
     return;
   }
 
-  arma::Col<T> GetOccupiedNeighbours(int pos)
+  arma::Col<T> GetOccupiedNeighbours(const int pos)
   {
+    arma::Col<uint8_t> checkNeighbour(neighbourCount, arma::fill::zeros);
     arma::Col<T> neighbours = nn.col(pos);
-    arma::Col<T> neighbour_check(3);
-    for (int k = 0; k < nearest; k++)
+    for (size_t k = 0; k < neighbourCount; k++)
     {
-      neighbour_check(k) = (lattice(neighbours(k)) == EMPTY) ? 0 : 1;
+      checkNeighbour(k) = (lattice(neighbours(k)) == EMPTY) ? 0 : 1;
     }
-    neighbours = neighbours.elem(find(neighbour_check == 1));
+    neighbours = neighbours.elem(find(checkNeighbour == 1));
     return neighbours;
   }
 
@@ -569,7 +561,7 @@ private:
     {
       r1 = s1 = occupation[i];
       lattice(s1) = -1;
-      for (int j = 0; j < nearest; j++)
+      for (size_t j = 0; j < neighbourCount; j++)
       {
         s2 = nn(j, s1);
         if (lattice(s2) != EMPTY)
@@ -603,7 +595,7 @@ private:
   // periodic boundary conditions
   void BoundariesHoneycomb()
   {
-    int cur_col = 0;
+    int curCol = 0;
     int count = 0;
     for (int i = 0; i < N; i++)
     {
@@ -639,7 +631,7 @@ private:
       }
       else // Run through the rest of the tests
       {
-        switch (cur_col)
+        switch (curCol)
         {
         case 0:
           if (arma::any(firstRow == i)) // First row
@@ -704,7 +696,7 @@ private:
       if ((i + 1) % L == 0) // Update current column
       {
         count++;
-        cur_col = count % 4;
+        curCol = count % 4;
       }
     }
     return;
@@ -734,14 +726,14 @@ private:
 
   pcg64 SeedRNG(int seed)
   {
-    if (seed > 0) // Check for user-defined seed
+    if (seed > 0) // User-defined seed
     {
       return pcg64(seed);
     }
     else // Initialize random seed
     {
-      pcg_extras::seed_seq_from<std::random_device> seed_source;
-      return pcg64(seed_source);
+      pcg_extras::seed_seq_from<std::random_device> seedSource;
+      return pcg64(seedSource);
     }
   }
 };
