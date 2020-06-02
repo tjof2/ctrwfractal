@@ -24,23 +24,17 @@
 
 ***************************************************************************/
 
-#ifndef CTRW_H
-#define CTRW_H
+#ifndef CTRW_HPP
+#define CTRW_HPP
 
-// C++ headers
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <iomanip>
 #include <random>
-
-// OpenMP
+#include <armadillo>
 #include <omp.h>
 
-// Armadillo
-#include <armadillo>
-
-// PCG RNG
 #include "pcg/pcg_random.hpp"
 
 template <class T>
@@ -55,30 +49,25 @@ public:
                   double walk_noise, int walk_type)
   {
 
-// Set up OMP
 #if defined(_OPENMP)
     omp_set_dynamic(0);
     omp_set_num_threads(4);
 #endif
 
-    // Initialize threshold
     threshold = pc;
-
-    // Number of random walks (>0)
     n_walks = nwalks;
     walk_length = nsteps;
     beta = power_beta;
     tau0 = power_tau;
-    sim_length =
-        (tau0 < 1.) ? static_cast<int>(walk_length / tau0) : walk_length;
+    sim_length = (tau0 < 1.) ? static_cast<int>(walk_length / tau0) : walk_length;
     noise = walk_noise;
     walk_mode = walk_type;
 
-    // Get dimensions
-    L = size;
+    L = size; // Get dimensions
 
-    // Check mode
+    auto tStart = std::chrono::high_resolution_clock::now();
     std::cout << "Searching neighbours...    ";
+
     if (type.compare("Honeycomb") == 0)
     {
       lattice_mode = 1;
@@ -89,18 +78,10 @@ public:
       last_row.set_size(2 * L);
       for (int i = 1; i <= 2 * L; i++)
       {
-        first_row(i - 1) =
-            1 - (3 * L) / 2. + (std::pow(-1, i) * L) / 2. + 2 * i * L - 1;
+        first_row(i - 1) = 1 - (3 * L) / 2. + (std::pow(-1, i) * L) / 2. + 2 * i * L - 1;
         last_row(i - 1) = L / 2 * (4 * i + std::pow(-1, i + 1) - 1) - 1;
       }
-      time_start = GetTime();
       BoundariesHoneycomb();
-      time_end = GetTime();
-      run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-                      time_end - time_start)
-                      .count() /
-                  1E6);
-      std::cout << std::setprecision(6) << run_time << " s" << std::endl;
     }
     else if (type.compare("Square") == 0)
     {
@@ -108,26 +89,20 @@ public:
       nearest = 4;
       N = L * L;
       nn.set_size(nearest, N);
-      time_start = GetTime();
       BoundariesSquare();
-      time_end = GetTime();
-      run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-                      time_end - time_start)
-                      .count() /
-                  1E6);
-      std::cout << std::setprecision(6) << run_time << " s" << std::endl;
     }
     else
     {
-      std::cerr << "!!! WARNING: " << type.c_str()
-                << " must be either 'Square' or 'Honeycomb' !!!" << std::endl;
+      std::cerr << "ERROR: " << type.c_str() << " must be either 'Square' or 'Honeycomb'" << std::endl;
+      return;
     }
 
-    // Define empty index
-    EMPTY = (-N - 1);
+    auto tEnd = std::chrono::high_resolution_clock::now();
+    auto tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart);
+    std::cout << std::setprecision(6) << tElapsed.count() * 1E-6 << " s" << std::endl;
 
-    // Set array sizes
-    lattice.set_size(N);
+    EMPTY = (-N - 1);    // Define empty index
+    lattice.set_size(N); // Set array sizes
     occupation.set_size(N);
     lattice_coords.set_size(3, N);
     walks.set_size(sim_length);
@@ -142,84 +117,62 @@ public:
     ergodicity.set_size(walk_length - 1);
     analysis.set_size(walk_length - 1, n_walks + 3);
 
-    // Seed the generator
-    RNG = SeedRNG(rngseed);
+    RNG = SeedRNG(rngseed); // Seed the generator
+
     return;
   }
 
   void Run()
   {
-    // First randomise the order in which the
-    // sites are occupied
-    std::cout << "Randomising occupations... ";
-    time_start = GetTime();
-    Permutation();
-    time_end = GetTime();
-    run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-                    time_end - time_start)
-                    .count() /
-                1E6);
-    std::cout << std::setprecision(6) << run_time << " s" << std::endl;
 
-    // Now run the percolation algorithm
+    std::cout << "Randomizing occupations... ";
+    auto tStart = std::chrono::high_resolution_clock::now();
+    Permutation(); // Randomize the order in which the sites are occupied
+    auto tEnd = std::chrono::high_resolution_clock::now();
+    auto tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart);
+    std::cout << std::setprecision(6) << tElapsed.count() * 1E-6 << " s" << std::endl;
+
     std::cout << "Running percolation...     ";
-    time_start = GetTime();
-    Percolate();
-    time_end = GetTime();
-    run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-                    time_end - time_start)
-                    .count() /
-                1E6);
-    std::cout << std::setprecision(6) << run_time << " s" << std::endl;
+    tStart = std::chrono::high_resolution_clock::now();
+    Percolate(); // Now run the percolation algorithm
+    tEnd = std::chrono::high_resolution_clock::now();
+    tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart);
+    std::cout << std::setprecision(6) << tElapsed.count() * 1E-6 << " s" << std::endl;
 
-    // Now build the lattice coordinates
     std::cout << "Building lattice...        ";
-    time_start = GetTime();
-    BuildLattice();
-    time_end = GetTime();
-    run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-                    time_end - time_start)
-                    .count() /
-                1E6);
-    std::cout << std::setprecision(6) << run_time << " s" << std::endl;
+    tStart = std::chrono::high_resolution_clock::now();
+    BuildLattice(); // Now build the lattice coordinates
+    tEnd = std::chrono::high_resolution_clock::now();
+    tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart);
+    std::cout << std::setprecision(6) << tElapsed.count() * 1E-6 << " s" << std::endl;
 
-    // Now run the random walks and analyse
-    if (n_walks > 0)
+    if (n_walks > 0) // Now run the random walks and analyse
     {
       std::cout << std::endl;
       std::cout << "Simulating random walks... ";
-      time_start = GetTime();
+      tStart = std::chrono::high_resolution_clock::now();
       RandomWalks();
-      time_end = GetTime();
-      run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-                      time_end - time_start)
-                      .count() /
-                  1E6);
-      std::cout << std::setprecision(6) << run_time << " s" << std::endl;
+      tEnd = std::chrono::high_resolution_clock::now();
+      tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart);
+      std::cout << std::setprecision(6) << tElapsed.count() * 1E-6 << " s" << std::endl;
 
       // Add noise to walk
       if (noise > 0.)
       {
         std::cout << "Adding noise...            ";
-        time_start = GetTime();
+        tStart = std::chrono::high_resolution_clock::now();
         AddNoise();
-        time_end = GetTime();
-        run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-                        time_end - time_start)
-                        .count() /
-                    1E6);
-        std::cout << std::setprecision(6) << run_time << " s" << std::endl;
+        tEnd = std::chrono::high_resolution_clock::now();
+        tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart);
+        std::cout << std::setprecision(6) << tElapsed.count() * 1E-6 << " s" << std::endl;
       }
 
       std::cout << "Analysing random walks...  ";
-      time_start = GetTime();
+      tStart = std::chrono::high_resolution_clock::now();
       AnalyseWalks();
-      time_end = GetTime();
-      run_time = (std::chrono::duration_cast<std::chrono::microseconds>(
-                      time_end - time_start)
-                      .count() /
-                  1E6);
-      std::cout << std::setprecision(6) << run_time << " s" << std::endl;
+      tEnd = std::chrono::high_resolution_clock::now();
+      tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart);
+      std::cout << std::setprecision(6) << tElapsed.count() * 1E-6 << " s" << std::endl;
     }
     return;
   }
@@ -250,25 +203,11 @@ private:
   arma::mat analysis;
   arma::cube walks_coords;
 
-  double threshold, beta, tau0, run_time, noise;
+  double threshold, beta, tau0, tElapsed, noise;
   const double sqrt3 = 1.7320508075688772;
 
   pcg64 RNG;
   std::uniform_int_distribution<uint32_t> UniformDistribution{0, 4294967294};
-
-#if __cplusplus <= 199711L
-  std::chrono::time_point<std::chrono::monotonic_clock> time_start, time_end;
-  std::chrono::time_point<std::chrono::monotonic_clock> GetTime()
-  {
-    return std::chrono::monotonic_clock::now();
-  }
-#else
-  std::chrono::time_point<std::chrono::steady_clock> time_start, time_end;
-  std::chrono::time_point<std::chrono::steady_clock> GetTime()
-  {
-    return std::chrono::steady_clock::now();
-  }
-#endif
 
   void AnalyseWalks()
   {
@@ -379,15 +318,14 @@ private:
     arma::uvec boundary_detect(sim_length);
     arma::uvec true_boundary(sim_length);
 
-    // Simulate a random walk on the lattice
-    for (int i = 0; i < n_walks; i++)
+    for (int i = 0; i < n_walks; i++) // Simulate a random walk on the lattice
     {
       bool ok_start = false;
       int pos;
       int count_loop = 0;
       int count_max = (N > 1E6) ? N : 1E6;
-      // Search for a random start position
-      do
+
+      do // Search for a random start position
       {
         pos = latticeones(RandSample(RNG));
         // Check start position has >= 1 occupied nearest neighbours
@@ -416,34 +354,30 @@ private:
         for (int j = 1; j < sim_length; j++)
         {
           arma::Col<T> neighbours = GetOccupiedNeighbours(pos);
-          std::uniform_int_distribution<T> RandChoice(
-              0, static_cast<int>(neighbours.n_elem) - 1);
+          std::uniform_int_distribution<T> RandChoice(0, static_cast<int>(neighbours.n_elem) - 1);
           pos = neighbours(RandChoice(RNG));
           walks(j) = pos;
 
-          // Check for walks that hit the top boundary
           if (arma::any(first_row == walks(j - 1)) &&
-              arma::any(last_row == pos))
+              arma::any(last_row == pos)) // Walks that hit the top boundary
           {
             boundary_detect(j) = 1;
           }
-          // Check for walks that hit the bottom boundary
+
           else if (arma::any(last_row == walks(j - 1)) &&
-                   arma::any(first_row == pos))
+                   arma::any(first_row == pos)) // Walks that hit the bottom boundary
           {
             boundary_detect(j) = 2;
           }
-          // Check for walks that hit the RHS
-          else if (walks(j - 1) >= (N - L) && pos < L)
+          else if (walks(j - 1) >= (N - L) && pos < L) // Walks that hit the RHS
           {
             boundary_detect(j) = 3;
           }
-          // Check for walks that hit the LHS
-          else if (walks(j - 1) < L && pos >= (N - L))
+          else if (walks(j - 1) < L && pos >= (N - L)) // Walks that hit the LHS
           {
             boundary_detect(j) = 4;
           }
-          // Else do nothing
+
           else
           {
             boundary_detect(j) = 0;
@@ -467,16 +401,14 @@ private:
       }
 
       // Only keep times within range [0, walk_length]
-      arma::uvec temp_time_boundary =
-          arma::find(ctrw_times >= walk_length, 1, "first");
+      arma::uvec temp_time_boundary = arma::find(ctrw_times >= walk_length, 1, "first");
       int time_boundary = temp_time_boundary(0);
       ctrw_times = ctrw_times(arma::span(0, time_boundary));
       ctrw_times(time_boundary) = walk_length;
 
-      // Subordinate fractal walk with CTRW
       int counter = 0;
       true_boundary.zeros();
-      for (int j = 0; j < walk_length; j++)
+      for (int j = 0; j < walk_length; j++) // Subordinate fractal walk with CTRW
       {
         if (j > ctrw_times(counter))
         {
@@ -486,10 +418,9 @@ private:
         true_walks(j) = walks(counter);
       }
 
-      // Finally convert the walk to the coordinate system
       int nx_cell = 0;
       int ny_cell = 0;
-      for (int nstep = 0; nstep < walk_length; nstep++)
+      for (int nstep = 0; nstep < walk_length; nstep++) // Convert the walk to the coordinate system
       {
         switch (true_boundary(nstep))
         {
@@ -520,8 +451,7 @@ private:
 
   void BuildLattice()
   {
-    // Populate the honeycomb lattice coordinates
-    if (lattice_mode == 1)
+    if (lattice_mode == 1) // Populate the honeycomb lattice coordinates
     {
       double xx, yy;
       int count = 0;
@@ -558,13 +488,13 @@ private:
           count++;
         }
       }
-      // Get unit cell size
-      unit_cell = arma::max(lattice_coords, 1);
+
+      unit_cell = arma::max(lattice_coords, 1); // Get unit cell size
       unit_cell(0) += 3 / 2;
       unit_cell(1) += sqrt3 / 2;
     }
-    // Populate the square lattice coordinates
-    else if (lattice_mode == 0)
+
+    else if (lattice_mode == 0) // Populate the square lattice coordinates
     {
       int count = 0;
       for (int i = 0; i < L; i++)
@@ -578,15 +508,14 @@ private:
           count++;
         }
       }
-      // Get unit cell size
-      unit_cell = arma::max(lattice_coords, 1);
+
+      unit_cell = arma::max(lattice_coords, 1); // Get unit cell size
       unit_cell(0) += 1;
       unit_cell(1) += 1;
     }
     return;
   }
 
-  // Check occupied neighbours of a point
   arma::Col<T> GetOccupiedNeighbours(int pos)
   {
     arma::Col<T> neighbours = nn.col(pos);
@@ -599,7 +528,6 @@ private:
     return neighbours;
   }
 
-  // Randomise the order in which sites are occupied
   void Permutation()
   {
     T j;
@@ -619,7 +547,6 @@ private:
     return;
   }
 
-  // Find root of branch
   int FindRoot(int i)
   {
     if (lattice(i) < 0)
@@ -629,7 +556,6 @@ private:
     return lattice(i) = FindRoot(lattice(i));
   }
 
-  // Percolation algorithm
   void Percolate()
   {
     int s1, s2;
@@ -682,55 +608,47 @@ private:
     int count = 0;
     for (int i = 0; i < N; i++)
     {
-      // First site
-      if (i == 0)
+      if (i == 0) // First site
       {
         nn(0, i) = i + L;
         nn(1, i) = i + 2 * L - 1;
         nn(2, i) = i + N - L;
       }
-      // Top right-hand corner
-      else if (i == N - L)
+      else if (i == N - L) // Top right-hand corner
       {
         nn(0, i) = i - 1;
         nn(1, i) = i - L;
         nn(2, i) = i - N + L;
       }
-      // Bottom right-hand corner
-      else if (i == N - L - 1)
+      else if (i == N - L - 1) // Bottom right-hand corner
       {
         nn(0, i) = i - L;
         nn(1, i) = i + L;
         nn(2, i) = i + 1;
       }
-      // First column
-      else if (i < L)
+      else if (i < L) // First column
       {
         nn(0, i) = i + L - 1;
         nn(1, i) = i + L;
         nn(2, i) = i + N - L;
       }
-      // Last column
-      else if (i > (N - L))
+      else if (i > (N - L)) // Last column
       {
         nn(0, i) = i - L - 1;
         nn(1, i) = i - L;
         nn(2, i) = i - N + L;
       }
-      // Run through the rest of the tests
-      else
+      else // Run through the rest of the tests
       {
         switch (cur_col)
         {
         case 0:
-          // First row
-          if (arma::any(first_row == i))
+          if (arma::any(first_row == i)) // First row
           {
             nn(0, i) = i - L;
             nn(1, i) = i + L;
             nn(2, i) = i + 2 * L - 1;
           }
-          // Otherwise
           else
           {
             nn(0, i) = i - L;
@@ -739,14 +657,12 @@ private:
           }
           break;
         case 1:
-          // Last row
-          if (arma::any(last_row == i))
+          if (arma::any(last_row == i)) // Last row
           {
             nn(0, i) = i - L;
             nn(1, i) = i + L;
             nn(2, i) = i - 2 * L + 1;
           }
-          // Otherwise
           else
           {
             nn(0, i) = i - L;
@@ -755,14 +671,12 @@ private:
           }
           break;
         case 2:
-          // Last row
-          if (arma::any(last_row == i))
+          if (arma::any(last_row == i)) // Last row
           {
             nn(0, i) = i - L;
             nn(1, i) = i + L;
             nn(2, i) = i + 1;
           }
-          // Otherwise
           else
           {
             nn(0, i) = i - L;
@@ -771,14 +685,13 @@ private:
           }
           break;
         case 3:
-          // First row
-          if (arma::any(first_row == i))
+
+          if (arma::any(first_row == i)) // First row
           {
             nn(0, i) = i - 1;
             nn(1, i) = i - L;
             nn(2, i) = i + L;
           }
-          // Otherwise
           else
           {
             nn(0, i) = i - L - 1;
@@ -789,8 +702,7 @@ private:
         }
       }
 
-      // Update current column
-      if ((i + 1) % L == 0)
+      if ((i + 1) % L == 0) // Update current column
       {
         count++;
         cur_col = count % 4;
@@ -821,17 +733,14 @@ private:
     return;
   }
 
-  // Random number generator
   pcg64 SeedRNG(int seed)
   {
-    // Check for user-defined seed
-    if (seed > 0)
+    if (seed > 0) // Check for user-defined seed
     {
       return pcg64(seed);
     }
-    else
+    else // Initialize random seed
     {
-      // Initialize random seed
       pcg_extras::seed_seq_from<std::random_device> seed_source;
       return pcg64(seed_source);
     }

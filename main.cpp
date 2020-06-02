@@ -24,14 +24,10 @@
 
 ***************************************************************************/
 
-// C++ headers
 #include <iostream>
 #include <string>
 
-// Include header
 #include "ctrw.hpp"
-
-// Option parser
 #include "optionparser/ezOptionParser.hpp"
 
 int main(int argc, const char *argv[])
@@ -116,8 +112,7 @@ int main(int argc, const char *argv[])
   opt.get("-nsteps")->getInt(length);
   opt.get("-type")->getInt(type);
 
-  // Check for argument errors
-  if (fraction == 0. || fraction > 1.)
+  if (fraction == 0. || fraction > 1.) // Check for argument errors
   {
     std::cerr << "ERROR: fraction must be 0 < f <= 1" << std::endl;
     return 1;
