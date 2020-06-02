@@ -1040,7 +1040,7 @@ namespace pcg_detail
     /*
  * DXSM -- double xorshift multiply
  *
- * This is a new, more powerful output permutation (added in 2019).  It's
+ * This is a new, more powerful output permutation (added in 2020).  It's
  * a more comprehensive scrambling than RXS M, but runs faster on 128-bit
  * types.  Although primarily intended for use at large sizes, also works
  * at smaller sizes as well.

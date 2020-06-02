@@ -1,26 +1,26 @@
 /***************************************************************************
 
-    Copyright 2016-2019 Tom Furnival
+  Copyright 2016-2020 Tom Furnival
 
-    This file is part of CTRWfractal.
+  This file is part of CTRWfractal.
 
-    CTRWfractal is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+  CTRWfractal is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-    CTRWfractal is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+  CTRWfractal is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with CTRWfractal.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with CTRWfractal.  If not, see <http://www.gnu.org/licenses/>.
 
-    Percolation clusters developed from C code by Mark Newman.
-    http://www-personal.umich.edu/~mejn/percolation/
-    "A fast Monte Carlo algorithm for site or bond percolation"
-    M. E. J. Newman and R. M. Ziff, Phys. Rev. E 64, 016706 (2001).
+  Percolation clusters developed from C code by Mark Newman.
+  http://www-personal.umich.edu/~mejn/percolation/
+  "A fast Monte Carlo algorithm for site or bond percolation"
+  M. E. J. Newman and R. M. Ziff, Phys. Rev. E 64, 016706 (2001).
 
 ***************************************************************************/
 
@@ -43,14 +43,17 @@
 // PCG RNG
 #include "pcg/pcg_random.hpp"
 
-template <class T> class CTRWfractal {
+template <class T>
+class CTRWfractal
+{
 public:
   CTRWfractal(){};
   ~CTRWfractal(){};
 
   void Initialize(int size, double pc, int rngseed, std::string type,
                   int nwalks, int nsteps, double power_beta, double power_tau,
-                  double walk_noise, int walk_type) {
+                  double walk_noise, int walk_type)
+  {
 
 // Set up OMP
 #if defined(_OPENMP)
@@ -76,14 +79,16 @@ public:
 
     // Check mode
     std::cout << "Searching neighbours...    ";
-    if (type.compare("Honeycomb") == 0) {
+    if (type.compare("Honeycomb") == 0)
+    {
       lattice_mode = 1;
       nearest = 3;
       N = L * L * 4;
       nn.set_size(nearest, N);
       first_row.set_size(2 * L);
       last_row.set_size(2 * L);
-      for (int i = 1; i <= 2 * L; i++) {
+      for (int i = 1; i <= 2 * L; i++)
+      {
         first_row(i - 1) =
             1 - (3 * L) / 2. + (std::pow(-1, i) * L) / 2. + 2 * i * L - 1;
         last_row(i - 1) = L / 2 * (4 * i + std::pow(-1, i + 1) - 1) - 1;
@@ -96,7 +101,9 @@ public:
                       .count() /
                   1E6);
       std::cout << std::setprecision(6) << run_time << " s" << std::endl;
-    } else if (type.compare("Square") == 0) {
+    }
+    else if (type.compare("Square") == 0)
+    {
       lattice_mode = 0;
       nearest = 4;
       N = L * L;
@@ -109,7 +116,9 @@ public:
                       .count() /
                   1E6);
       std::cout << std::setprecision(6) << run_time << " s" << std::endl;
-    } else {
+    }
+    else
+    {
       std::cerr << "!!! WARNING: " << type.c_str()
                 << " must be either 'Square' or 'Honeycomb' !!!" << std::endl;
     }
@@ -138,7 +147,8 @@ public:
     return;
   }
 
-  void Run() {
+  void Run()
+  {
     // First randomise the order in which the
     // sites are occupied
     std::cout << "Randomising occupations... ";
@@ -174,7 +184,8 @@ public:
     std::cout << std::setprecision(6) << run_time << " s" << std::endl;
 
     // Now run the random walks and analyse
-    if (n_walks > 0) {
+    if (n_walks > 0)
+    {
       std::cout << std::endl;
       std::cout << "Simulating random walks... ";
       time_start = GetTime();
@@ -187,7 +198,8 @@ public:
       std::cout << std::setprecision(6) << run_time << " s" << std::endl;
 
       // Add noise to walk
-      if (noise > 0.) {
+      if (noise > 0.)
+      {
         std::cout << "Adding noise...            ";
         time_start = GetTime();
         AddNoise();
@@ -212,8 +224,10 @@ public:
     return;
   }
 
-  void Save(std::string filename) {
-    std::cout << std::endl << "Saving files: " << std::endl;
+  void Save(std::string filename)
+  {
+    std::cout << std::endl
+              << "Saving files: " << std::endl;
     lattice_coords.save(filename + ".cluster", arma::raw_binary);
     std::cout << "   Cluster saved to:    " << filename << ".cluster"
               << std::endl;
@@ -244,17 +258,20 @@ private:
 
 #if __cplusplus <= 199711L
   std::chrono::time_point<std::chrono::monotonic_clock> time_start, time_end;
-  std::chrono::time_point<std::chrono::monotonic_clock> GetTime() {
+  std::chrono::time_point<std::chrono::monotonic_clock> GetTime()
+  {
     return std::chrono::monotonic_clock::now();
   }
 #else
   std::chrono::time_point<std::chrono::steady_clock> time_start, time_end;
-  std::chrono::time_point<std::chrono::steady_clock> GetTime() {
+  std::chrono::time_point<std::chrono::steady_clock> GetTime()
+  {
     return std::chrono::steady_clock::now();
   }
 #endif
 
-  void AnalyseWalks() {
+  void AnalyseWalks()
+  {
     // Zero the placeholders
     eaMSD.zeros();
     eaMSD_all.zeros();
@@ -265,10 +282,12 @@ private:
 
 // Parallelize over n_walks
 #pragma omp parallel for
-    for (int i = 0; i < n_walks; i++) {
+    for (int i = 0; i < n_walks; i++)
+    {
       arma::vec2 walk_origin, walk_step;
       walk_origin = walks_coords.slice(i).col(0);
-      for (int j = 1; j < walk_length; j++) {
+      for (int j = 1; j < walk_length; j++)
+      {
         // Ensemble-average MSD
         walk_step = walks_coords.slice(i).col(j);
         eaMSD_all(j - 1, i) = std::pow(walk_step(0) - walk_origin(0), 2) +
@@ -308,17 +327,20 @@ private:
     return;
   }
 
-  double TAMSD(const arma::mat &walk, int t, int delta) {
+  double TAMSD(const arma::mat &walk, int t, int delta)
+  {
     double integral = 0.;
     int diff = t - delta;
-    for (int i = 0; i < diff; i++) {
+    for (int i = 0; i < diff; i++)
+    {
       integral += std::pow(walk(0, i + delta) - walk(0, i), 2) +
                   std::pow(walk(1, i + delta) - walk(1, i), 2);
     }
     return integral / diff;
   }
 
-  void AddNoise() {
+  void AddNoise()
+  {
     // Add noise to walk
     arma::cube noise_cube(size(walks_coords));
     std::normal_distribution<double> NormalDistribution(0, noise);
@@ -327,13 +349,15 @@ private:
     return;
   }
 
-  void RandomWalks() {
+  void RandomWalks()
+  {
     arma::Col<T> latticeones;
 
     // Set up selection of random start point
     //  - on largest cluster, or
     //  - on ALL clusters
-    if (walk_mode == 1) {
+    if (walk_mode == 1)
+    {
       T lattice_min = lattice.elem(find(lattice > EMPTY)).min();
       arma::uvec index_min = arma::find(lattice == lattice_min);
       arma::uvec biggest_cluster = arma::find(lattice == index_min(0));
@@ -343,7 +367,9 @@ private:
       biggest_cluster(size_biggest_cluster - 1) = index_min(0);
       latticeones = arma::regspace<arma::Col<T>>(0, N - 1);
       latticeones = latticeones.elem(biggest_cluster);
-    } else {
+    }
+    else
+    {
       latticeones = arma::regspace<arma::Col<T>>(0, N - 1);
       latticeones = latticeones.elem(find(lattice != EMPTY));
     }
@@ -354,32 +380,41 @@ private:
     arma::uvec true_boundary(sim_length);
 
     // Simulate a random walk on the lattice
-    for (int i = 0; i < n_walks; i++) {
+    for (int i = 0; i < n_walks; i++)
+    {
       bool ok_start = false;
       int pos;
       int count_loop = 0;
       int count_max = (N > 1E6) ? N : 1E6;
       // Search for a random start position
-      do {
+      do
+      {
         pos = latticeones(RandSample(RNG));
         // Check start position has >= 1 occupied nearest neighbours
         arma::Col<T> neighbours = GetOccupiedNeighbours(pos);
-        if (neighbours.n_elem > 0 || count_loop >= count_max) {
+        if (neighbours.n_elem > 0 || count_loop >= count_max)
+        {
           ok_start = true;
-        } else {
+        }
+        else
+        {
           count_loop++;
         }
       } while (!ok_start);
 
       // If stuck on a site with no nearest neighbours,
       // set the whole walk to that site
-      if (count_loop == count_max) {
+      if (count_loop == count_max)
+      {
         walks = pos * arma::ones<arma::Col<T>>(sim_length);
         boundary_detect.zeros();
-      } else {
+      }
+      else
+      {
         walks(0) = pos;
         boundary_detect(0) = 0;
-        for (int j = 1; j < sim_length; j++) {
+        for (int j = 1; j < sim_length; j++)
+        {
           arma::Col<T> neighbours = GetOccupiedNeighbours(pos);
           std::uniform_int_distribution<T> RandChoice(
               0, static_cast<int>(neighbours.n_elem) - 1);
@@ -388,38 +423,46 @@ private:
 
           // Check for walks that hit the top boundary
           if (arma::any(first_row == walks(j - 1)) &&
-              arma::any(last_row == pos)) {
+              arma::any(last_row == pos))
+          {
             boundary_detect(j) = 1;
           }
           // Check for walks that hit the bottom boundary
           else if (arma::any(last_row == walks(j - 1)) &&
-                   arma::any(first_row == pos)) {
+                   arma::any(first_row == pos))
+          {
             boundary_detect(j) = 2;
           }
           // Check for walks that hit the RHS
-          else if (walks(j - 1) >= (N - L) && pos < L) {
+          else if (walks(j - 1) >= (N - L) && pos < L)
+          {
             boundary_detect(j) = 3;
           }
           // Check for walks that hit the LHS
-          else if (walks(j - 1) < L && pos >= (N - L)) {
+          else if (walks(j - 1) < L && pos >= (N - L))
+          {
             boundary_detect(j) = 4;
           }
           // Else do nothing
-          else {
+          else
+          {
             boundary_detect(j) = 0;
           }
         }
       }
 
       ctrw_times.set_size(sim_length);
-      if (beta > 0.) {
+      if (beta > 0.)
+      {
         // Draw CTRW variates from exponential distribution
         std::exponential_distribution<double> ExponentialDistribution(beta);
         ctrw_times.imbue([&]() { return ExponentialDistribution(RNG); });
 
         // Transform to Pareto distribution and accumulate
         ctrw_times = arma::cumsum(tau0 * arma::exp(ctrw_times));
-      } else {
+      }
+      else
+      {
         ctrw_times = arma::linspace<arma::vec>(1, sim_length, sim_length);
       }
 
@@ -433,8 +476,10 @@ private:
       // Subordinate fractal walk with CTRW
       int counter = 0;
       true_boundary.zeros();
-      for (int j = 0; j < walk_length; j++) {
-        if (j > ctrw_times(counter)) {
+      for (int j = 0; j < walk_length; j++)
+      {
+        if (j > ctrw_times(counter))
+        {
           counter++;
           true_boundary(j) = boundary_detect(counter);
         }
@@ -444,8 +489,10 @@ private:
       // Finally convert the walk to the coordinate system
       int nx_cell = 0;
       int ny_cell = 0;
-      for (int nstep = 0; nstep < walk_length; nstep++) {
-        switch (true_boundary(nstep)) {
+      for (int nstep = 0; nstep < walk_length; nstep++)
+      {
+        switch (true_boundary(nstep))
+        {
         case 1:
           ny_cell++;
           break;
@@ -471,16 +518,21 @@ private:
     return;
   }
 
-  void BuildLattice() {
+  void BuildLattice()
+  {
     // Populate the honeycomb lattice coordinates
-    if (lattice_mode == 1) {
+    if (lattice_mode == 1)
+    {
       double xx, yy;
       int count = 0;
       int cur_col = 0;
-      for (int i = 0; i < 4 * L; i++) {
-        for (int j = L - 1; j >= 0; j--) {
+      for (int i = 0; i < 4 * L; i++)
+      {
+        for (int j = L - 1; j >= 0; j--)
+        {
           cur_col = i % 4;
-          switch (cur_col) {
+          switch (cur_col)
+          {
           case 0:
           default:
             xx = i / 4 * 3;
@@ -512,10 +564,13 @@ private:
       unit_cell(1) += sqrt3 / 2;
     }
     // Populate the square lattice coordinates
-    else if (lattice_mode == 0) {
+    else if (lattice_mode == 0)
+    {
       int count = 0;
-      for (int i = 0; i < L; i++) {
-        for (int j = 0; j < L; j++) {
+      for (int i = 0; i < L; i++)
+      {
+        for (int j = 0; j < L; j++)
+        {
           lattice_coords(0, count) = i;
           lattice_coords(1, count) = j;
           lattice_coords(2, count) =
@@ -532,10 +587,12 @@ private:
   }
 
   // Check occupied neighbours of a point
-  arma::Col<T> GetOccupiedNeighbours(int pos) {
+  arma::Col<T> GetOccupiedNeighbours(int pos)
+  {
     arma::Col<T> neighbours = nn.col(pos);
     arma::Col<T> neighbour_check(3);
-    for (int k = 0; k < nearest; k++) {
+    for (int k = 0; k < nearest; k++)
+    {
       neighbour_check(k) = (lattice(neighbours(k)) == EMPTY) ? 0 : 1;
     }
     neighbours = neighbours.elem(find(neighbour_check == 1));
@@ -543,14 +600,17 @@ private:
   }
 
   // Randomise the order in which sites are occupied
-  void Permutation() {
+  void Permutation()
+  {
     T j;
     T temp;
 
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++)
+    {
       occupation(i) = i;
     }
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++)
+    {
       j = i + (N - i) * 2.3283064e-10 * UniformDistribution(RNG);
       temp = occupation(i);
       occupation(i) = occupation(j);
@@ -560,39 +620,51 @@ private:
   }
 
   // Find root of branch
-  int FindRoot(int i) {
-    if (lattice(i) < 0) {
+  int FindRoot(int i)
+  {
+    if (lattice(i) < 0)
+    {
       return i;
     }
     return lattice(i) = FindRoot(lattice(i));
   }
 
   // Percolation algorithm
-  void Percolate() {
+  void Percolate()
+  {
     int s1, s2;
     int r1, r2;
     T big = 0;
 
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++)
+    {
       lattice(i) = EMPTY;
     }
-    for (int i = 0; i < (threshold * N) - 1; i++) {
+    for (int i = 0; i < (threshold * N) - 1; i++)
+    {
       r1 = s1 = occupation[i];
       lattice(s1) = -1;
-      for (int j = 0; j < nearest; j++) {
+      for (int j = 0; j < nearest; j++)
+      {
         s2 = nn(j, s1);
-        if (lattice(s2) != EMPTY) {
+        if (lattice(s2) != EMPTY)
+        {
           r2 = FindRoot(s2);
-          if (r2 != r1) {
-            if (lattice(r1) > lattice(r2)) {
+          if (r2 != r1)
+          {
+            if (lattice(r1) > lattice(r2))
+            {
               lattice(r2) += lattice(r1);
               lattice(r1) = r2;
               r1 = r2;
-            } else {
+            }
+            else
+            {
               lattice(r1) += lattice(r2);
               lattice(r2) = r1;
             }
-            if (-lattice(r1) > big) {
+            if (-lattice(r1) > big)
+            {
               big = -lattice(r1);
             }
           }
@@ -604,52 +676,63 @@ private:
 
   // Nearest neighbours of a honeycomb lattice with
   // periodic boundary conditions
-  void BoundariesHoneycomb() {
+  void BoundariesHoneycomb()
+  {
     int cur_col = 0;
     int count = 0;
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++)
+    {
       // First site
-      if (i == 0) {
+      if (i == 0)
+      {
         nn(0, i) = i + L;
         nn(1, i) = i + 2 * L - 1;
         nn(2, i) = i + N - L;
       }
       // Top right-hand corner
-      else if (i == N - L) {
+      else if (i == N - L)
+      {
         nn(0, i) = i - 1;
         nn(1, i) = i - L;
         nn(2, i) = i - N + L;
       }
       // Bottom right-hand corner
-      else if (i == N - L - 1) {
+      else if (i == N - L - 1)
+      {
         nn(0, i) = i - L;
         nn(1, i) = i + L;
         nn(2, i) = i + 1;
       }
       // First column
-      else if (i < L) {
+      else if (i < L)
+      {
         nn(0, i) = i + L - 1;
         nn(1, i) = i + L;
         nn(2, i) = i + N - L;
       }
       // Last column
-      else if (i > (N - L)) {
+      else if (i > (N - L))
+      {
         nn(0, i) = i - L - 1;
         nn(1, i) = i - L;
         nn(2, i) = i - N + L;
       }
       // Run through the rest of the tests
-      else {
-        switch (cur_col) {
+      else
+      {
+        switch (cur_col)
+        {
         case 0:
           // First row
-          if (arma::any(first_row == i)) {
+          if (arma::any(first_row == i))
+          {
             nn(0, i) = i - L;
             nn(1, i) = i + L;
             nn(2, i) = i + 2 * L - 1;
           }
           // Otherwise
-          else {
+          else
+          {
             nn(0, i) = i - L;
             nn(1, i) = i + L - 1;
             nn(2, i) = i + L;
@@ -657,13 +740,15 @@ private:
           break;
         case 1:
           // Last row
-          if (arma::any(last_row == i)) {
+          if (arma::any(last_row == i))
+          {
             nn(0, i) = i - L;
             nn(1, i) = i + L;
             nn(2, i) = i - 2 * L + 1;
           }
           // Otherwise
-          else {
+          else
+          {
             nn(0, i) = i - L;
             nn(1, i) = i - L + 1;
             nn(2, i) = i + L;
@@ -671,13 +756,15 @@ private:
           break;
         case 2:
           // Last row
-          if (arma::any(last_row == i)) {
+          if (arma::any(last_row == i))
+          {
             nn(0, i) = i - L;
             nn(1, i) = i + L;
             nn(2, i) = i + 1;
           }
           // Otherwise
-          else {
+          else
+          {
             nn(0, i) = i - L;
             nn(1, i) = i + L;
             nn(2, i) = i + L + 1;
@@ -685,13 +772,15 @@ private:
           break;
         case 3:
           // First row
-          if (arma::any(first_row == i)) {
+          if (arma::any(first_row == i))
+          {
             nn(0, i) = i - 1;
             nn(1, i) = i - L;
             nn(2, i) = i + L;
           }
           // Otherwise
-          else {
+          else
+          {
             nn(0, i) = i - L - 1;
             nn(1, i) = i - L;
             nn(2, i) = i + L;
@@ -701,7 +790,8 @@ private:
       }
 
       // Update current column
-      if ((i + 1) % L == 0) {
+      if ((i + 1) % L == 0)
+      {
         count++;
         cur_col = count % 4;
       }
@@ -711,16 +801,20 @@ private:
 
   // Nearest neighbours of a square lattice
   // with periodic boundary conditions
-  void BoundariesSquare() {
-    for (int i = 0; i < N; i++) {
+  void BoundariesSquare()
+  {
+    for (int i = 0; i < N; i++)
+    {
       nn(0, i) = (i + 1) % N;
       nn(1, i) = (i + N - 1) % N;
       nn(2, i) = (i + L) % N;
       nn(3, i) = (i + N - L) % N;
-      if (i % L == 0) {
+      if (i % L == 0)
+      {
         nn(1, i) = i + L - 1;
       }
-      if ((i + 1) % L == 0) {
+      if ((i + 1) % L == 0)
+      {
         nn(0, i) = i - L + 1;
       }
     }
@@ -728,11 +822,15 @@ private:
   }
 
   // Random number generator
-  pcg64 SeedRNG(int seed) {
+  pcg64 SeedRNG(int seed)
+  {
     // Check for user-defined seed
-    if (seed > 0) {
+    if (seed > 0)
+    {
       return pcg64(seed);
-    } else {
+    }
+    else
+    {
       // Initialize random seed
       pcg_extras::seed_seq_from<std::random_device> seed_source;
       return pcg64(seed_source);

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright 2015-2020 Tom Furnival
+# Copyright 2016-2020 Tom Furnival
 #
 # This file is part of CTRWfractal.
 #

@@ -1,6 +1,6 @@
 /***************************************************************************
 
-    Copyright 2016-2019 Tom Furnival
+    Copyright 2016-2020 Tom Furnival
 
     This file is part of CTRWfractal.
 
@@ -34,27 +34,30 @@
 // Option parser
 #include "optionparser/ezOptionParser.hpp"
 
-int main(int argc, const char *argv[]) {
+int main(int argc, const char *argv[])
+{
   std::cout << std::string(30, '-') << std::endl;
-  std::cout << "CTRWfractal" << std::endl << std::endl;
+  std::cout << "CTRWfractal" << std::endl
+            << std::endl;
   std::cout << "Author: Tom Furnival" << std::endl;
   std::cout << "Email:  tjof2@cam.ac.uk" << std::endl;
-  std::cout << std::string(30, '-') << std::endl << std::endl;
+  std::cout << std::string(30, '-') << std::endl
+            << std::endl;
 
   ez::ezOptionParser opt;
   opt.overview = "\nCTRWfractal";
   opt.syntax = "./fractalwalk";
   opt.example = "./fractalwalk\n\n";
-  opt.add("", // Default.
-          0,  // Required?
-          0,  // Number of args expected.
-          0,  // Delimiter if expecting multiple args.
+  opt.add("",                            // Default.
+          0,                             // Required?
+          0,                             // Number of args expected.
+          0,                             // Delimiter if expecting multiple args.
           "Display usage instructions.", // Help description.
           "-h",                          // Flag token.
           "-help",                       // Flag token.
           "--help",                      // Flag token.
           "--usage"                      // Flag token.
-          );
+  );
   opt.add("honeycomb", 0, 1, 0, "Filename for output", "-o", "-output");
   opt.add("Honeycomb", 0, 1, 0, "Lattice type", "-l", "-lattice");
   opt.add("-1", 0, 1, 0, "Percolation fraction", "-f", "-fraction");
@@ -70,22 +73,27 @@ int main(int argc, const char *argv[]) {
 
   // Check for errors
   opt.parse(argc, argv);
-  if (opt.isSet("-h")) {
+  if (opt.isSet("-h"))
+  {
     std::string usage;
     opt.getUsage(usage, 80, ez::ezOptionParser::INTERLEAVE);
     std::cout << usage;
     return 1;
   }
   std::vector<std::string> badOptions;
-  if (!opt.gotRequired(badOptions)) {
-    for (int i = 0; i < (int)badOptions.size(); ++i) {
+  if (!opt.gotRequired(badOptions))
+  {
+    for (int i = 0; i < (int)badOptions.size(); ++i)
+    {
       std::cerr << "ERROR: Missing required option " << badOptions[i]
                 << std::endl;
     }
     return 1;
   }
-  if (!opt.gotExpected(badOptions)) {
-    for (int i = 0; i < (int)badOptions.size(); ++i) {
+  if (!opt.gotExpected(badOptions))
+  {
+    for (int i = 0; i < (int)badOptions.size(); ++i)
+    {
       std::cerr << "ERROR: Got unexpected number of arguments for option "
                 << badOptions[i] << std::endl;
     }
@@ -109,18 +117,24 @@ int main(int argc, const char *argv[]) {
   opt.get("-type")->getInt(type);
 
   // Check for argument errors
-  if (fraction == 0. || fraction > 1.) {
+  if (fraction == 0. || fraction > 1.)
+  {
     std::cerr << "ERROR: fraction must be 0 < f <= 1" << std::endl;
     return 1;
-  } else if (fraction < 0.) {
+  }
+  else if (fraction < 0.)
+  {
     // See http://dx.doi.org/10.1088/1751-8113/47/13/135001
     // for details on thresholds for percolation:
     //   - Square:     0.592746
     //   - Honeycomb:  0.697040230
 
-    if (lattice.compare("Honeycomb") == 0) {
+    if (lattice.compare("Honeycomb") == 0)
+    {
       fraction = 0.697040230;
-    } else if (lattice.compare("Square") == 0) {
+    }
+    else if (lattice.compare("Square") == 0)
+    {
       fraction = 0.592746;
     }
   }
