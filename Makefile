@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -O3 -fopenmp -Wall -std=c++11 -march=native
+CXXFLAGS = -O3 -Wall -std=c++11 -march=native
 LIBS = -larmadillo -lm
 
 TARGET = fractalwalk
@@ -15,4 +15,4 @@ $(TARGET): $(OBJS)
 .PHONY: clean
 
 clean:
-	rm $(TARGET)
+	rm *.o $(TARGET)

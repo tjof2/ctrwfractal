@@ -58,8 +58,7 @@ int main(int argc, const char *argv[])
   opt.add("Honeycomb", 0, 1, 0, "Lattice type", "-l", "-lattice");
   opt.add("-1", 0, 1, 0, "Percolation fraction", "-f", "-fraction");
   opt.add("128", 0, 1, 0, "Dimensions of lattice", "-d", "-dim");
-  opt.add("10", 1, 1, 0, "Simulate random walks on this lattice", "-w",
-          "-walks");
+  opt.add("10", 1, 1, 0, "Simulate random walks on this lattice", "-w", "-walks");
   opt.add("1000", 1, 1, 0, "Length of random walks", "-n", "-nsteps");
   opt.add("1", 1, 1, 0, "Power-law beta", "-b", "-beta");
   opt.add("1", 0, 1, 0, "Power-law scale", "-tau");
