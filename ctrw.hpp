@@ -33,8 +33,11 @@
 #include <iomanip>
 #include <random>
 #include <armadillo>
+#include <thread>
+#include <vector>
 
 #include "pcg/pcg_random.hpp"
+#include "utils.hpp"
 
 template <typename T1, typename T2>
 class CTRWfractal
@@ -48,15 +51,17 @@ public:
               const double tau0,
               const double noise,
               const uint8_t latticeMode,
-              const uint8_t walkMode) : L(L),
-                                        nWalks(nWalks),
-                                        walkLength(walkLength),
-                                        threshold(threshold),
-                                        beta(beta),
-                                        tau0(tau0),
-                                        noise(noise),
-                                        latticeMode(latticeMode),
-                                        walkMode(walkMode)
+              const uint8_t walkMode,
+              const int nJobs) : L(L),
+                                 nWalks(nWalks),
+                                 walkLength(walkLength),
+                                 threshold(threshold),
+                                 beta(beta),
+                                 tau0(tau0),
+                                 noise(noise),
+                                 latticeMode(latticeMode),
+                                 walkMode(walkMode),
+                                 nJobs(nJobs)
   {
     simLength = (tau0 < 1.) ? static_cast<uint32_t>(walkLength / tau0) : walkLength;
 
@@ -188,6 +193,7 @@ private:
   uint32_t L, nWalks, walkLength;
   double threshold, beta, tau0, noise;
   uint8_t latticeMode, walkMode;
+  int nJobs;
 
   uint32_t N, simLength;
   int64_t EMPTY;
@@ -221,8 +227,7 @@ private:
     eataMSDall.zeros();
     ergodicity.zeros();
 
-    for (size_t i = 0; i < nWalks; i++)
-    {
+    auto &&func = [&](uint32_t i) {
       arma::Col<double>::fixed<2> walkOrigin, walkStep;
       walkOrigin = walksCoords.slice(i).col(0);
       for (size_t j = 1; j < walkLength; j++)
@@ -233,7 +238,9 @@ private:
         taMSD(j - 1, i) = TAMSD(walksCoords.slice(i), walkLength, j); // Time-average MSD
         eataMSDall(j - 1, i) = TAMSD(walksCoords.slice(i), j, 1);     // Ensemble-time-average MSD
       }
-    }
+    };
+    parallel(func, static_cast<uint32_t>(0), static_cast<uint32_t>(nWalks), nJobs);
+
     // Check for NaNs
     eaMSD.elem(arma::find_nonfinite(eaMSD)).zeros();
     taMSD.elem(arma::find_nonfinite(taMSD)).zeros();
@@ -481,7 +488,6 @@ private:
       unitCell(0) += 1.5;
       unitCell(1) += sqrt3o2;
     }
-
     else if (latticeMode == 0) // Populate the square lattice coordinates
     {
       int count = 0;

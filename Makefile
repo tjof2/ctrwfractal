@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -O3 -Wall -std=c++11 -march=native
+CXXFLAGS = -O3 -Wall -std=c++11 -march=native -pthread
 LIBS = -larmadillo -lm
 
 TARGET = fractalwalk
