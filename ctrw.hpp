@@ -47,6 +47,7 @@ public:
               const double beta,
               const double tau0,
               const double noise,
+              const uint8_t latticeMode,
               const uint8_t walkMode) : L(L),
                                         nWalks(nWalks),
                                         walkLength(walkLength),
@@ -54,6 +55,7 @@ public:
                                         beta(beta),
                                         tau0(tau0),
                                         noise(noise),
+                                        latticeMode(latticeMode),
                                         walkMode(walkMode)
   {
     simLength = (tau0 < 1.) ? static_cast<uint32_t>(walkLength / tau0) : walkLength;
@@ -73,16 +75,15 @@ public:
 
   ~CTRWfractal(){};
 
-  void Initialize(std::string type, const uint64_t rngseed)
+  void Initialize(const uint64_t rngseed)
   {
     RNG = SeedRNG(rngseed); // Seed the generator
 
     auto tStart = std::chrono::high_resolution_clock::now();
     std::cout << "Searching neighbours...    ";
 
-    if (type.compare("Honeycomb") == 0)
+    if (latticeMode == 1)
     {
-      latticeMode = 1;
       neighbourCount = 3;
       N = L * L * 4;
       nn.set_size(neighbourCount, N);
@@ -95,18 +96,12 @@ public:
       }
       BoundariesHoneycomb();
     }
-    else if (type.compare("Square") == 0)
+    else if (latticeMode == 0)
     {
-      latticeMode = 0;
       neighbourCount = 4;
       N = L * L;
       nn.set_size(neighbourCount, N);
       BoundariesSquare();
-    }
-    else
-    {
-      std::cerr << "ERROR: " << type.c_str() << " must be either 'Square' or 'Honeycomb'" << std::endl;
-      return;
     }
 
     auto tEnd = std::chrono::high_resolution_clock::now();
@@ -147,7 +142,6 @@ public:
 
     if (nWalks > 0) // Now run the random walks and analyse
     {
-      std::cout << std::endl;
       std::cout << "Simulating random walks... ";
       tStart = std::chrono::high_resolution_clock::now();
       RandomWalks();
@@ -193,11 +187,11 @@ public:
 private:
   uint32_t L, nWalks, walkLength;
   double threshold, beta, tau0, noise;
-  uint8_t walkMode;
+  uint8_t latticeMode, walkMode;
 
   uint32_t N, simLength;
   int64_t EMPTY;
-  uint8_t latticeMode, neighbourCount;
+  uint8_t neighbourCount;
   const double sqrt3 = 1.7320508075688772;
   const double sqrt3o2 = 0.8660254037844386;
 
@@ -363,7 +357,6 @@ private:
           {
             boundaryDetect(j) = 1;
           }
-
           else if (arma::any(lastRow == walks(j - 1)) && arma::any(firstRow == pos)) // Walks that hit the bottom boundary
           {
             boundaryDetect(j) = 2;
@@ -376,7 +369,6 @@ private:
           {
             boundaryDetect(j) = 4;
           }
-
           else
           {
             boundaryDetect(j) = 0;
@@ -388,7 +380,7 @@ private:
       if (beta > 0.)
       {
         // Draw CTRW variates from exponential distribution
-        std::exponential_distribution<double> ExponentialDistribution(beta);
+        std::exponential_distribution<T2> ExponentialDistribution(beta);
         ctrwTimes.imbue([&]() { return ExponentialDistribution(RNG); });
 
         // Transform to Pareto distribution and accumulate

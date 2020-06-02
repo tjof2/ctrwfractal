@@ -89,7 +89,7 @@ int main(int argc, const char *argv[])
 
   std::string outfile, lattice;
   double fraction, beta, noise, tau0;
-  int seed, size, walks, length, type;
+  int seed, size, walks, length, type, latticeMode;
 
   opt.get("-output")->getString(outfile);
   opt.get("-lattice")->getString(lattice);
@@ -125,11 +125,25 @@ int main(int argc, const char *argv[])
     }
   }
 
+  if (lattice.compare("Honeycomb") == 0)
+  {
+    latticeMode = 1;
+  }
+  else if (lattice.compare("Square") == 0)
+  {
+    latticeMode = 0;
+  }
+  else
+  {
+    std::cerr << "ERROR: -l " << lattice.c_str() << " must be either 'Square' or 'Honeycomb'" << std::endl;
+    return -1;
+  }
+
   // Generate the lattice and run the walks
   CTRWfractal<int32_t, double> *sim = new CTRWfractal<int32_t, double>(
-      size, walks, length, fraction, beta, tau0, noise, type);
+      size, walks, length, fraction, beta, tau0, noise, latticeMode, type);
 
-  sim->Initialize(lattice, seed);
+  sim->Initialize(seed);
   sim->Run();
   sim->Save(outfile);
 
