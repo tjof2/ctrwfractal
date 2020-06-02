@@ -2,7 +2,7 @@
 
 # CTRWfractal
 
-**Modelling continuous-time random walks on fractals**
+**Modelling continuous-time random walks on fractal percolation clusters**
 
 The percolation clusters are generated using a C++ port of code by [Mark Newman](http://www-personal.umich.edu/~mejn/percolation/). The original C code supplements the paper: [A fast Monte Carlo algorithm for site or bond percolation](http://aps.arxiv.org/abs/cond-mat/0101295/), M. E. J. Newman and R. M. Ziff, Phys. Rev. E 64, 016706 (2001). This code has been adapted to work on both square and honeycomb (i.e. graphene) lattices.
 
