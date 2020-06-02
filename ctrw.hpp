@@ -36,32 +36,44 @@
 
 #include "pcg/pcg_random.hpp"
 
-template <class T>
+template <typename T1, typename T2>
 class CTRWfractal
 {
 public:
-  CTRWfractal(const int L,
-              const int nWalks,
-              const int walkLength,
+  CTRWfractal(const uint32_t L,
+              const uint32_t nWalks,
+              const uint32_t walkLength,
               const double threshold,
               const double beta,
               const double tau0,
               const double noise,
-              const int walkMode) : L(L),
-                                    nWalks(nWalks),
-                                    walkLength(walkLength),
-                                    threshold(threshold),
-                                    beta(beta),
-                                    tau0(tau0),
-                                    noise(noise),
-                                    walkMode(walkMode)
+              const uint8_t walkMode) : L(L),
+                                        nWalks(nWalks),
+                                        walkLength(walkLength),
+                                        threshold(threshold),
+                                        beta(beta),
+                                        tau0(tau0),
+                                        noise(noise),
+                                        walkMode(walkMode)
   {
-    simLength = (tau0 < 1.) ? static_cast<int>(walkLength / tau0) : walkLength;
+    simLength = (tau0 < 1.) ? static_cast<uint32_t>(walkLength / tau0) : walkLength;
+
+    walks.set_size(simLength); // Set array sizes
+    ctrwTimes.set_size(simLength);
+    trueWalks.set_size(walkLength);
+    walksCoords.set_size(2, walkLength, nWalks);
+    eaMSD.set_size(walkLength);
+    eaMSDall.set_size(walkLength - 1, nWalks);
+    taMSD.set_size(walkLength - 1, nWalks);
+    eataMSD.set_size(walkLength - 1);
+    eataMSDall.set_size(walkLength - 1, nWalks);
+    ergodicity.set_size(walkLength - 1);
+    analysis.set_size(walkLength - 1, nWalks + 3);
   };
 
   ~CTRWfractal(){};
 
-  void Initialize(std::string type, int rngseed)
+  void Initialize(std::string type, const uint64_t rngseed)
   {
     RNG = SeedRNG(rngseed); // Seed the generator
 
@@ -76,10 +88,10 @@ public:
       nn.set_size(neighbourCount, N);
       firstRow.set_size(2 * L);
       lastRow.set_size(2 * L);
-      for (int i = 1; i <= 2 * L; i++)
+      for (size_t i = 1; i <= 2 * L; i++)
       {
-        firstRow(i - 1) = 1 - (3 * L) / 2. + (std::pow(-1, i) * L) / 2. + 2 * i * L - 1;
-        lastRow(i - 1) = L / 2 * (4 * i + std::pow(-1, i + 1) - 1) - 1;
+        firstRow(i - 1) = 1 - 0.5 * (3 * L) + 0.5 * (std::pow(-1, i) * L) + 2 * i * L - 1;
+        lastRow(i - 1) = 0.5 * L * (4 * i + std::pow(-1, i + 1) - 1) - 1;
       }
       BoundariesHoneycomb();
     }
@@ -105,17 +117,6 @@ public:
     lattice.set_size(N); // Set array sizes
     occupation.set_size(N);
     latticeCoords.set_size(3, N);
-    walks.set_size(simLength);
-    ctrwTimes.set_size(simLength);
-    trueWalks.set_size(walkLength);
-    walksCoords.set_size(2, walkLength, nWalks);
-    eaMSD.set_size(walkLength);
-    eaMSDall.set_size(walkLength - 1, nWalks);
-    taMSD.set_size(walkLength - 1, nWalks);
-    eataMSD.set_size(walkLength - 1);
-    eataMSDall.set_size(walkLength - 1, nWalks);
-    ergodicity.set_size(walkLength - 1);
-    analysis.set_size(walkLength - 1, nWalks + 3);
 
     return;
   }
@@ -190,49 +191,53 @@ public:
   }
 
 private:
-  int L, nWalks, walkLength;
+  uint32_t L, nWalks, walkLength;
   double threshold, beta, tau0, noise;
-  int walkMode;
+  uint8_t walkMode;
 
-  int N, EMPTY, latticeMode, simLength;
-  uint8_t neighbourCount;
+  uint32_t N, simLength;
+  int64_t EMPTY;
+  uint8_t latticeMode, neighbourCount;
   const double sqrt3 = 1.7320508075688772;
+  const double sqrt3o2 = 0.8660254037844386;
 
-  arma::Col<T> lattice, occupation, walks, trueWalks, firstRow, lastRow;
-  arma::Mat<T> nn;
-  arma::vec unitCell, ctrwTimes, eaMSD, eataMSD, ergodicity;
-  arma::mat latticeCoords, eaMSDall, eataMSDall, taMSD;
-  arma::mat analysis;
-  arma::cube walksCoords;
+  arma::Col<T1> lattice, occupation, walks, trueWalks, firstRow, lastRow;
+  arma::Mat<T1> nn;
+  arma::Col<T2> unitCell, ctrwTimes, eaMSD, eataMSD, ergodicity;
+  arma::Mat<T2> latticeCoords, eaMSDall, eataMSDall, taMSD;
+  arma::Mat<T2> analysis;
+  arma::Cube<T2> walksCoords;
 
   pcg64 RNG;
   std::uniform_int_distribution<uint32_t> UniformDistribution{0, 4294967294};
 
+  inline double SquaredDist(const double &x1, const double &x2, const double &y1, const double &y2)
+  {
+    double a = (x1 - x2);
+    double b = (y1 - y2);
+    return a * a + b * b;
+  }
+
   void AnalyseWalks()
   {
-    // Zero the placeholders
-    eaMSD.zeros();
+    eaMSD.zeros(); // Zero the placeholders
     eaMSDall.zeros();
     taMSD.zeros();
     eataMSD.zeros();
     eataMSDall.zeros();
     ergodicity.zeros();
 
-    for (int i = 0; i < nWalks; i++)
+    for (size_t i = 0; i < nWalks; i++)
     {
-      arma::vec2 walkOrigin, walkStep;
+      arma::Col<double>::fixed<2> walkOrigin, walkStep;
       walkOrigin = walksCoords.slice(i).col(0);
-      for (int j = 1; j < walkLength; j++)
+      for (size_t j = 1; j < walkLength; j++)
       {
-        // Ensemble-average MSD
         walkStep = walksCoords.slice(i).col(j);
-        eaMSDall(j - 1, i) = std::pow(walkStep(0) - walkOrigin(0), 2) +
-                             std::pow(walkStep(1) - walkOrigin(1), 2);
-        // Time-average MSD
-        taMSD(j - 1, i) = TAMSD(walksCoords.slice(i), walkLength, j);
-
-        // Ensemble-time-average MSD
-        eataMSDall(j - 1, i) = TAMSD(walksCoords.slice(i), j, 1);
+        eaMSDall(j - 1, i) = SquaredDist(walkStep(0), walkOrigin(0),
+                                         walkStep(1), walkOrigin(1)); // Ensemble-average MSD
+        taMSD(j - 1, i) = TAMSD(walksCoords.slice(i), walkLength, j); // Time-average MSD
+        eataMSDall(j - 1, i) = TAMSD(walksCoords.slice(i), j, 1);     // Ensemble-time-average MSD
       }
     }
     // Check for NaNs
@@ -248,11 +253,11 @@ private:
     eataMSD.elem(arma::find_nonfinite(eataMSD)).zeros();
 
     // Ergodicity breaking over s
-    arma::mat meanTAMSD = arma::square(arma::mean(taMSD, 1));
-    arma::mat meanTAMSD2 = arma::mean(arma::square(taMSD), 1);
+    arma::Mat<T2> meanTAMSD = arma::square(arma::mean(taMSD, 1));
+    arma::Mat<T2> meanTAMSD2 = arma::mean(arma::square(taMSD), 1);
     ergodicity = (meanTAMSD2 - meanTAMSD) / meanTAMSD;
     ergodicity.elem(arma::find_nonfinite(ergodicity)).zeros();
-    ergodicity /= arma::regspace<arma::vec>(1, walkLength - 1);
+    ergodicity /= arma::regspace<arma::Col<T2>>(1, walkLength - 1);
     ergodicity.elem(arma::find_nonfinite(ergodicity)).zeros();
 
     analysis.col(0) = eaMSD;
@@ -263,22 +268,21 @@ private:
     return;
   }
 
-  double TAMSD(const arma::mat &walk, int t, int delta)
+  double TAMSD(const arma::Mat<T2> &walk, const int t, const int delta)
   {
     double integral = 0.;
     int diff = t - delta;
     for (int i = 0; i < diff; i++)
     {
-      integral += std::pow(walk(0, i + delta) - walk(0, i), 2) +
-                  std::pow(walk(1, i + delta) - walk(1, i), 2);
+      integral += SquaredDist(walk(0, i + delta), walk(0, i), walk(1, i + delta), walk(1, i));
     }
     return integral / diff;
   }
 
   void AddNoise()
   {
-    arma::cube noiseCube(size(walksCoords));
-    std::normal_distribution<double> NormalDistribution(0, noise);
+    arma::Cube<T2> noiseCube(size(walksCoords));
+    std::normal_distribution<T2> NormalDistribution(0, noise);
     noiseCube.imbue([&]() { return NormalDistribution(RNG); });
     walksCoords += noiseCube;
     return;
@@ -286,34 +290,36 @@ private:
 
   void RandomWalks()
   {
-    arma::Col<T> latticeOnes;
+    arma::Col<T1> latticeOnes;
 
     // Set up selection of random start point
     //  - on largest cluster, or
     //  - on ALL clusters
     if (walkMode == 1)
     {
-      T latticeMin = lattice.elem(find(lattice > EMPTY)).min();
+      T1 latticeMin = lattice.elem(find(lattice > EMPTY)).min();
       arma::uvec idxMin = arma::find(lattice == latticeMin);
       arma::uvec largestCluster = arma::find(lattice == idxMin(0));
       int largestClusterSize = largestCluster.n_elem;
       largestClusterSize++;
       largestCluster.resize(largestClusterSize);
       largestCluster(largestClusterSize - 1) = idxMin(0);
-      latticeOnes = arma::regspace<arma::Col<T>>(0, N - 1);
+      latticeOnes = arma::regspace<arma::Col<T1>>(0, N - 1);
       latticeOnes = latticeOnes.elem(largestCluster);
     }
     else
     {
-      latticeOnes = arma::regspace<arma::Col<T>>(0, N - 1);
+      latticeOnes = arma::regspace<arma::Col<T1>>(0, N - 1);
       latticeOnes = latticeOnes.elem(find(lattice != EMPTY));
     }
-    std::uniform_int_distribution<T> RandSample(0, static_cast<int>(latticeOnes.n_elem) - 1);
+    std::uniform_int_distribution<T1> RandSample(0, static_cast<uint32_t>(latticeOnes.n_elem) - 1);
 
     arma::uvec boundaryDetect(simLength);
     arma::uvec boundaryTrue(simLength);
+    int64_t bound1 = static_cast<int64_t>(L);
+    int64_t bound2 = static_cast<int64_t>(N) - bound1;
 
-    for (int i = 0; i < nWalks; i++) // Simulate a random walk on the lattice
+    for (size_t i = 0; i < nWalks; i++) // Simulate a random walk on the lattice
     {
       bool okStart = false;
       int pos;
@@ -324,7 +330,7 @@ private:
       {
         pos = latticeOnes(RandSample(RNG));
         // Check start position has >= 1 occupied nearest neighbours
-        arma::Col<T> neighbours = GetOccupiedNeighbours(pos);
+        arma::Col<T1> neighbours = GetOccupiedNeighbours(pos);
         if (neighbours.n_elem > 0 || countLoop >= countMax)
         {
           okStart = true;
@@ -339,36 +345,34 @@ private:
       // set the whole walk to that site
       if (countLoop == countMax)
       {
-        walks = pos * arma::ones<arma::Col<T>>(simLength);
+        walks = pos * arma::ones<arma::Col<T1>>(simLength);
         boundaryDetect.zeros();
       }
       else
       {
         walks(0) = pos;
         boundaryDetect(0) = 0;
-        for (int j = 1; j < simLength; j++)
+        for (size_t j = 1; j < simLength; j++)
         {
-          arma::Col<T> neighbours = GetOccupiedNeighbours(pos);
-          std::uniform_int_distribution<T> RandChoice(0, static_cast<int>(neighbours.n_elem) - 1);
+          arma::Col<T1> neighbours = GetOccupiedNeighbours(pos);
+          std::uniform_int_distribution<T1> RandChoice(0, static_cast<uint32_t>(neighbours.n_elem) - 1);
           pos = neighbours(RandChoice(RNG));
           walks(j) = pos;
 
-          if (arma::any(firstRow == walks(j - 1)) &&
-              arma::any(lastRow == pos)) // Walks that hit the top boundary
+          if (arma::any(firstRow == walks(j - 1)) && arma::any(lastRow == pos)) // Walks that hit the top boundary
           {
             boundaryDetect(j) = 1;
           }
 
-          else if (arma::any(lastRow == walks(j - 1)) &&
-                   arma::any(firstRow == pos)) // Walks that hit the bottom boundary
+          else if (arma::any(lastRow == walks(j - 1)) && arma::any(firstRow == pos)) // Walks that hit the bottom boundary
           {
             boundaryDetect(j) = 2;
           }
-          else if (walks(j - 1) >= (N - L) && pos < L) // Walks that hit the RHS
+          else if (walks(j - 1) >= bound2 && pos < bound1) // Walks that hit the RHS
           {
             boundaryDetect(j) = 3;
           }
-          else if (walks(j - 1) < L && pos >= (N - L)) // Walks that hit the LHS
+          else if (walks(j - 1) < bound1 && pos >= bound2) // Walks that hit the LHS
           {
             boundaryDetect(j) = 4;
           }
@@ -392,7 +396,7 @@ private:
       }
       else
       {
-        ctrwTimes = arma::linspace<arma::vec>(1, simLength, simLength);
+        ctrwTimes = arma::linspace<arma::Col<T2>>(1, simLength, simLength);
       }
 
       // Only keep times within range [0, walkLength]
@@ -403,7 +407,7 @@ private:
 
       int counter = 0;
       boundaryTrue.zeros();
-      for (int j = 0; j < walkLength; j++) // Subordinate fractal walk with CTRW
+      for (size_t j = 0; j < walkLength; j++) // Subordinate fractal walk with CTRW
       {
         if (j > ctrwTimes(counter))
         {
@@ -415,7 +419,7 @@ private:
 
       int nxCell = 0;
       int nyCell = 0;
-      for (int nstep = 0; nstep < walkLength; nstep++) // Convert the walk to the coordinate system
+      for (size_t nstep = 0; nstep < walkLength; nstep++) // Convert the walk to the coordinate system
       {
         switch (boundaryTrue(nstep))
         {
@@ -449,29 +453,29 @@ private:
       double xx, yy;
       int count = 0;
       int curCol = 0;
-      for (int i = 0; i < 4 * L; i++)
+      for (size_t i = 0; i < 4 * L; i++)
       {
-        for (int j = L - 1; j >= 0; j--)
+        for (size_t j = L - 1; j >= 0; j--)
         {
           curCol = i % 4;
           switch (curCol)
           {
           case 0:
           default:
-            xx = i / 4 * 3;
-            yy = j * sqrt3 + sqrt3 / 2;
+            xx = 0.25 * i * 3;
+            yy = j * sqrt3 + sqrt3o2;
             break;
           case 1:
-            xx = i / 4 * 3 + 1. / 2;
+            xx = 0.25 * i * 3 + 0.5;
             yy = j * sqrt3;
             break;
           case 2:
-            xx = i / 4 * 3 + 3. / 2;
+            xx = 0.25 * i * 3 + 1.5;
             yy = j * sqrt3;
             break;
           case 3:
-            xx = i / 4 * 3 + 2.;
-            yy = j * sqrt3 + sqrt3 / 2;
+            xx = 0.25 * i * 3 + 2.0;
+            yy = j * sqrt3 + sqrt3o2;
             break;
           }
           latticeCoords(0, count) = xx;
@@ -482,16 +486,16 @@ private:
       }
 
       unitCell = arma::max(latticeCoords, 1); // Get unit cell size
-      unitCell(0) += 3 / 2;
-      unitCell(1) += sqrt3 / 2;
+      unitCell(0) += 1.5;
+      unitCell(1) += sqrt3o2;
     }
 
     else if (latticeMode == 0) // Populate the square lattice coordinates
     {
       int count = 0;
-      for (int i = 0; i < L; i++)
+      for (size_t i = 0; i < L; i++)
       {
-        for (int j = 0; j < L; j++)
+        for (size_t j = 0; j < L; j++)
         {
           latticeCoords(0, count) = i;
           latticeCoords(1, count) = j;
@@ -507,10 +511,10 @@ private:
     return;
   }
 
-  arma::Col<T> GetOccupiedNeighbours(const int pos)
+  arma::Col<T1> GetOccupiedNeighbours(const int pos)
   {
     arma::Col<uint8_t> checkNeighbour(neighbourCount, arma::fill::zeros);
-    arma::Col<T> neighbours = nn.col(pos);
+    arma::Col<T1> neighbours = nn.col(pos);
     for (size_t k = 0; k < neighbourCount; k++)
     {
       checkNeighbour(k) = (lattice(neighbours(k)) == EMPTY) ? 0 : 1;
@@ -521,14 +525,14 @@ private:
 
   void Permutation()
   {
-    T j;
-    T temp;
+    T1 j;
+    T1 temp;
 
-    for (int i = 0; i < N; i++)
+    for (size_t i = 0; i < N; i++)
     {
       occupation(i) = i;
     }
-    for (int i = 0; i < N; i++)
+    for (size_t i = 0; i < N; i++)
     {
       j = i + (N - i) * 2.3283064e-10 * UniformDistribution(RNG);
       temp = occupation(i);
@@ -551,9 +555,9 @@ private:
   {
     int s1, s2;
     int r1, r2;
-    T big = 0;
+    T1 big = 0;
 
-    for (int i = 0; i < N; i++)
+    for (size_t i = 0; i < N; i++)
     {
       lattice(i) = EMPTY;
     }
@@ -597,7 +601,7 @@ private:
   {
     int curCol = 0;
     int count = 0;
-    for (int i = 0; i < N; i++)
+    for (size_t i = 0; i < N; i++)
     {
       if (i == 0) // First site
       {
@@ -706,7 +710,7 @@ private:
   // with periodic boundary conditions
   void BoundariesSquare()
   {
-    for (int i = 0; i < N; i++)
+    for (size_t i = 0; i < N; i++)
     {
       nn(0, i) = (i + 1) % N;
       nn(1, i) = (i + N - 1) % N;
@@ -724,7 +728,7 @@ private:
     return;
   }
 
-  pcg64 SeedRNG(int seed)
+  pcg64 SeedRNG(const uint64_t seed)
   {
     if (seed > 0) // User-defined seed
     {

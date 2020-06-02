@@ -126,8 +126,9 @@ int main(int argc, const char *argv[])
   }
 
   // Generate the lattice and run the walks
-  CTRWfractal<int32_t> *sim = new CTRWfractal<int32_t>(
+  CTRWfractal<int32_t, double> *sim = new CTRWfractal<int32_t, double>(
       size, walks, length, fraction, beta, tau0, noise, type);
+
   sim->Initialize(lattice, seed);
   sim->Run();
   sim->Save(outfile);
