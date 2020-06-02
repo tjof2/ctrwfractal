@@ -23,7 +23,7 @@ import numpy as np
 cimport numpy as np
 cimport cython
 from libcpp cimport bool
-from libc.stdint cimport uint8_t, uint32_t
+from libc.stdint cimport uint8_t, uint32_t, int64_t
 
 from .arma cimport (
     Mat,
@@ -43,7 +43,7 @@ cdef extern from "_ctrw.hpp":
     cdef uint32_t c_ctrw "CTRWwrapper"[T] (Mat[T] &, Mat[T] &, Cube[T] &,
                                            uint32_t, uint32_t, uint32_t,
                                            double, double, double, double,
-                                           uint8_t, uint8_t, int, int)
+                                           uint8_t, uint8_t, int64_t, int64_t)
 
 
 def ctrw_fractal_double(uint32_t gridSize = 128,
@@ -55,8 +55,8 @@ def ctrw_fractal_double(uint32_t gridSize = 128,
                         double noise = 0.0,
                         uint8_t latticeMode = 0,
                         uint8_t walkMode = 0,
-                        int randomSeed = 0,
-                        int nJobs = -1):
+                        int64_t randomSeed = 0,
+                        int64_t nJobs = -1):
 
     cdef np.ndarray[double, ndim=2] lattice
     cdef np.ndarray[double, ndim=2] analysis
