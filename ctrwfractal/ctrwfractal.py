@@ -22,58 +22,82 @@ from ._ctrwfractal import ctrw_fractal
 
 
 class CTRWfractal:
+    """
+
+    Parameters
+    ----------
+
+    Attributes
+    ----------
+
+    """
+
     def __init__(
         self,
-        gridSize=64,
-        nWalks=1,
-        walkLength=10,
+        grid_size=64,
+        n_walks=1,
+        n_steps=10,
         threshold=None,
         beta=1.0,
         tau0=1.0,
         noise=0.0,
-        latticeMode=0,
-        walkMode=0,
-        randomSeed=1,
-        nJobs=-1,
+        lattice_type=0,
+        walk_type=0,
+        random_seed=1,
+        n_jobs=-1,
     ):
-        self.gridSize = gridSize
-        self.nWalks = nWalks
-        self.walkLength = walkLength
+        self.grid_size = grid_size
+        self.n_walks = n_walks
+        self.n_steps = n_steps
         self.threshold = threshold
         self.beta = beta
         self.tau0 = tau0
         self.noise = noise
-        self.latticeMode = latticeMode
-        self.walkMode = walkMode
-        self.randomSeed = randomSeed
-        self.nJobs = nJobs
+        self.lattice_type = lattice_type
+        self.walk_type = walk_type
+        self.random_seed = random_seed
+        self.n_jobs = n_jobs
 
     def run(self):
-        # See http://dx.doi.org/10.1088/1751-8113/47/13/135001
-        # for details on thresholds for percolation:
-        #   - Square:     0.592746
-        #   - Honeycomb:  0.697040230
+        """
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+
+
+        Notes
+        -----
+        See http://dx.doi.org/10.1088/1751-8113/47/13/135001
+        for details on thresholds for percolation:
+            - Square:     0.592746
+            - Honeycomb:  0.697040230
+
+        """
 
         if self.threshold is None:
-            if self.latticeMode == 1:
-                fraction = 0.697040230
-            elif self.latticeMode == 0:
-                fraction = 0.592746
+            if self.lattice_type == 1:
+                self.threshold_ = 0.697040230
+            elif self.lattice_type == 0:
+                self.threshold_ = 0.592746
         else:
-            fraction = self.threshold
+            self.threshold_ = self.threshold
 
-        lattice, analysis, walks, result = ctrw_fractal(
-            gridSize=self.gridSize,
-            nWalks=self.nWalks,
-            walkLength=self.walkLength,
-            threshold=fraction,
+        self.lattice_, self.analysis_, self.walks_, _ = ctrw_fractal(
+            grid_size=self.grid_size,
+            n_walks=self.n_walks,
+            n_steps=self.n_steps,
+            threshold=self.threshold_,
             beta=self.beta,
             tau0=self.tau0,
             noise=self.noise,
-            latticeMode=self.latticeMode,
-            walkMode=self.walkMode,
-            randomSeed=self.randomSeed,
-            nJobs=self.nJobs,
+            lattice_type=self.lattice_type,
+            walk_type=self.walk_type,
+            random_seed=self.random_seed,
+            n_jobs=self.n_jobs,
         )
 
-        return lattice, analysis, walks, result
+        return self

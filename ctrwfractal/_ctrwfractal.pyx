@@ -25,14 +25,7 @@ cimport cython
 from libcpp cimport bool
 from libc.stdint cimport uint8_t, uint64_t, int64_t
 
-from .arma cimport (
-    Mat,
-    Cube,
-    numpy_to_mat_d,
-    numpy_from_mat_d,
-    numpy_to_cube_d,
-    numpy_from_cube_d,
-)
+from .arma cimport Mat, Cube, numpy_from_mat_d, numpy_from_cube_d
 
 
 cdef extern from "_ctrw.hpp":
@@ -42,17 +35,17 @@ cdef extern from "_ctrw.hpp":
                                         uint8_t, uint8_t, int64_t, int64_t)
 
 
-def ctrw_fractal(uint64_t gridSize = 128,
-                 uint64_t nWalks = 0,
-                 uint64_t walkLength = 1,
+def ctrw_fractal(uint64_t grid_size = 128,
+                 uint64_t n_walks = 0,
+                 uint64_t n_steps = 1,
                  double threshold = -1.0,
                  double beta = 0.0,
                  double tau0 = 1.0,
                  double noise = 0.0,
-                 uint8_t latticeMode = 0,
-                 uint8_t walkMode = 0,
-                 int64_t randomSeed = 0,
-                 int64_t nJobs = -1):
+                 uint8_t lattice_type = 0,
+                 uint8_t walk_type = 0,
+                 int64_t random_seed = 0,
+                 int64_t n_jobs = -1):
 
     cdef np.ndarray[double, ndim=2] lattice
     cdef np.ndarray[double, ndim=2] analysis
@@ -71,17 +64,17 @@ def ctrw_fractal(uint64_t gridSize = 128,
     result = c_ctrw(_lattice,
                     _analysis,
                     _walks,
-                    gridSize,
-                    nWalks,
-                    walkLength,
+                    grid_size,
+                    n_walks,
+                    n_steps,
                     threshold,
                     beta,
                     tau0,
                     noise,
-                    latticeMode,
-                    walkMode,
-                    nJobs,
-                    randomSeed)
+                    lattice_type,
+                    walk_type,
+                    n_jobs,
+                    random_seed)
 
     lattice = numpy_from_mat_d(_lattice)
     analysis = numpy_from_mat_d(_analysis)

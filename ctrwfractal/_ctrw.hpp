@@ -33,8 +33,8 @@
 #include <random>
 #include <armadillo>
 
-#include "pcg/pcg_random.hpp"
-#include "_utils.hpp"
+#include "utils/pcg_random.hpp"
+#include "utils/utils.hpp"
 
 class CTRWfractal
 {
@@ -42,35 +42,35 @@ public:
   CTRWfractal(
       const uint64_t gridSize,
       const uint64_t nWalks,
-      const uint64_t walkLength,
+      const uint64_t nSteps,
       const double threshold,
       const double beta,
       const double tau0,
       const double noise,
-      const uint8_t latticeMode,
-      const uint8_t walkMode,
+      const uint8_t latticeType,
+      const uint8_t walkType,
       const int32_t nJobs) : gridSize(gridSize),
                              nWalks(nWalks),
-                             walkLength(walkLength),
+                             nSteps(nSteps),
                              threshold(threshold),
                              beta(beta),
                              tau0(tau0),
                              noise(noise),
-                             latticeMode(latticeMode),
-                             walkMode(walkMode),
+                             latticeType(latticeType),
+                             walkType(walkType),
                              nJobs(nJobs)
   {
-    simLength = (tau0 < 1.) ? static_cast<uint64_t>(walkLength / tau0) : walkLength;
+    simLength = (tau0 < 1.) ? static_cast<uint64_t>(nSteps / tau0) : nSteps;
 
     walks.set_size(simLength); // Set array sizes
     ctrwTimes.set_size(simLength);
-    trueWalks.set_size(walkLength);
-    eaMSD.set_size(walkLength);
-    eaMSDall.set_size(walkLength - 1, nWalks);
-    taMSD.set_size(walkLength - 1, nWalks);
-    eataMSD.set_size(walkLength - 1);
-    eataMSDall.set_size(walkLength - 1, nWalks);
-    ergodicity.set_size(walkLength - 1);
+    trueWalks.set_size(nSteps);
+    eaMSD.set_size(nSteps);
+    eaMSDall.set_size(nSteps - 1, nWalks);
+    taMSD.set_size(nSteps - 1, nWalks);
+    eataMSD.set_size(nSteps - 1);
+    eataMSDall.set_size(nSteps - 1, nWalks);
+    ergodicity.set_size(nSteps - 1);
   };
 
   ~CTRWfractal(){};
@@ -82,7 +82,7 @@ public:
     auto tStart = std::chrono::high_resolution_clock::now();
     PrintFixed(0, "Searching neighbours...    ");
 
-    if (latticeMode == 1)
+    if (latticeType == 1)
     {
       neighbourCount = 3;
       N = gridSize * gridSize * 4;
@@ -96,7 +96,7 @@ public:
       }
       BoundariesHoneycomb();
     }
-    else if (latticeMode == 0)
+    else if (latticeType == 0)
     {
       neighbourCount = 4;
       N = gridSize * gridSize;
@@ -113,8 +113,8 @@ public:
     occupation.set_size(N);
 
     latticeCoords.set_size(3, N); // These are exported
-    analysis.set_size(walkLength - 1, nWalks + 3);
-    walksCoords.set_size(2, walkLength, nWalks);
+    analysis.set_size(nSteps - 1, nWalks + 3);
+    walksCoords.set_size(2, nSteps, nWalks);
 
     return;
   }
@@ -188,9 +188,9 @@ public:
   arma::cube walksCoords;
 
 private:
-  uint64_t gridSize, nWalks, walkLength;
+  uint64_t gridSize, nWalks, nSteps;
   double threshold, beta, tau0, noise;
-  uint8_t latticeMode, walkMode;
+  uint8_t latticeType, walkType;
   int32_t nJobs;
 
   uint64_t N, simLength;
@@ -228,12 +228,12 @@ private:
     auto &&func = [&](uint64_t i) {
       arma::vec::fixed<2> walkOrigin, walkStep;
       walkOrigin = walksCoords.slice(i).col(0);
-      for (size_t j = 1; j < walkLength; j++)
+      for (size_t j = 1; j < nSteps; j++)
       {
         walkStep = walksCoords.slice(i).col(j);
         eaMSDall(j - 1, i) = SquaredDist(walkStep(0), walkOrigin(0),
                                          walkStep(1), walkOrigin(1)); // Ensemble-average MSD
-        taMSD(j - 1, i) = TAMSD(walksCoords.slice(i), walkLength, j); // Time-average MSD
+        taMSD(j - 1, i) = TAMSD(walksCoords.slice(i), nSteps, j);     // Time-average MSD
         eataMSDall(j - 1, i) = TAMSD(walksCoords.slice(i), j, 1);     // Ensemble-time-average MSD
       }
     };
@@ -253,7 +253,7 @@ private:
     arma::mat meanTAMSD2 = arma::mean(arma::square(taMSD), 1);
     ergodicity = (meanTAMSD2 - meanTAMSD) / meanTAMSD;
     ergodicity.elem(arma::find_nonfinite(ergodicity)).zeros();
-    ergodicity /= arma::regspace<arma::vec>(1, walkLength - 1);
+    ergodicity /= arma::regspace<arma::vec>(1, nSteps - 1);
     ergodicity.elem(arma::find_nonfinite(ergodicity)).zeros();
 
     analysis.col(0) = eaMSD;
@@ -292,7 +292,7 @@ private:
     // Set up selection of random start point
     //  - on largest cluster, or
     //  - on ALL clusters
-    if (walkMode == 1)
+    if (walkType == 1)
     {
       int64_t latticeMin = lattice.elem(find(lattice > EMPTY)).min();
       arma::uvec idxMin = arma::find(lattice == latticeMin);
@@ -396,15 +396,15 @@ private:
         ctrwTimes = arma::linspace<arma::vec>(1, simLength, simLength);
       }
 
-      // Only keep times within range [0, walkLength]
-      arma::uvec boundaryTime_ = arma::find(ctrwTimes >= walkLength, 1, "first");
+      // Only keep times within range [0, nSteps]
+      arma::uvec boundaryTime_ = arma::find(ctrwTimes >= nSteps, 1, "first");
       int64_t boundaryTime = boundaryTime_(0);
       ctrwTimes = ctrwTimes(arma::span(0, boundaryTime));
-      ctrwTimes(boundaryTime) = walkLength;
+      ctrwTimes(boundaryTime) = nSteps;
 
       uint64_t counter = 0;
       boundaryTrue.zeros();
-      for (size_t j = 0; j < walkLength; j++) // Subordinate fractal walk with CTRW
+      for (size_t j = 0; j < nSteps; j++) // Subordinate fractal walk with CTRW
       {
         if (j > ctrwTimes(counter))
         {
@@ -416,7 +416,7 @@ private:
 
       int64_t nxCell = 0;
       int64_t nyCell = 0;
-      for (size_t nstep = 0; nstep < walkLength; nstep++) // Convert the walk to the coordinate system
+      for (size_t nstep = 0; nstep < nSteps; nstep++) // Convert the walk to the coordinate system
       {
         switch (boundaryTrue(nstep))
         {
@@ -445,7 +445,7 @@ private:
 
   void BuildLattice()
   {
-    if (latticeMode == 1) // Populate the honeycomb lattice coordinates
+    if (latticeType == 1) // Populate the honeycomb lattice coordinates
     {
       double xx, yy;
       uint64_t count = 0;
@@ -486,7 +486,7 @@ private:
       unitCell(0) += 1.5;
       unitCell(1) += sqrt3o2;
     }
-    else if (latticeMode == 0) // Populate the square lattice coordinates
+    else if (latticeType == 0) // Populate the square lattice coordinates
     {
       uint64_t count = 0;
       for (size_t i = 0; i < gridSize; i++)
@@ -744,26 +744,26 @@ uint64_t CTRWwrapper(
     arma::cube &walks,
     const uint64_t gridSize,
     const uint64_t nWalks,
-    const uint64_t walkLength,
+    const uint64_t nSteps,
     const double threshold,
     const double beta,
     const double tau0,
     const double noise,
-    const uint8_t latticeMode,
-    const uint8_t walkMode,
+    const uint8_t latticeType,
+    const uint8_t walkType,
     const int64_t randomSeed,
     const int64_t nJobs)
 {
   CTRWfractal *sim = new CTRWfractal(
       gridSize,
       nWalks,
-      walkLength,
+      nSteps,
       threshold,
       beta,
       tau0,
       noise,
-      latticeMode,
-      walkMode,
+      latticeType,
+      walkType,
       nJobs);
 
   sim->Initialize(randomSeed);
