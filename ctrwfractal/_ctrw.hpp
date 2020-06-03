@@ -92,8 +92,9 @@ public:
     t0 = std::chrono::high_resolution_clock::now();
     PrintFixed(0, "Searching neighbours...    ");
 
-    if (latticeType == 1)
+    switch (latticeType)
     {
+    case 1:
       neighbourCount = 3;
       N = gridSize * gridSize * 4;
       nn.set_size(neighbourCount, N);
@@ -105,13 +106,21 @@ public:
         lastRow(i - 1) = 0.5 * gridSize * (4 * i + std::pow(-1, i + 1) - 1) - 1;
       }
       BoundariesHoneycomb();
-    }
-    else if (latticeType == 0)
-    {
+      break;
+    case 0:
+    default:
       neighbourCount = 4;
       N = gridSize * gridSize;
       nn.set_size(neighbourCount, N);
+      firstRow.set_size(gridSize);
+      lastRow.set_size(gridSize);
+      for (size_t i = 1; i <= gridSize; i++)
+      {
+        firstRow(i - 1) = (i - 1) * gridSize - 1;
+        lastRow(i - 1) = (i - 1) * gridSize;
+      }
       BoundariesSquare();
+      break;
     }
 
     t1 = std::chrono::high_resolution_clock::now();
@@ -124,8 +133,6 @@ public:
     latticeCoords.set_size(2, N); // These are exported
     analysis.set_size(nSteps - 1, nWalks + 3);
     walksCoords.set_size(2, nSteps, nWalks);
-
-    return;
   }
 
   void Run()
@@ -183,7 +190,6 @@ public:
       t1 = std::chrono::high_resolution_clock::now();
       PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
     }
-    return;
   }
 
   arma::Col<int64_t> lattice;
@@ -204,7 +210,7 @@ private:
   const double sqrt3o2 = 0.8660254037844386;
   const double permConstant = 2.3283064e-10;
 
-  arma::ivec occupation, walks, trueWalks, firstRow, lastRow;
+  arma::ivec occupation, walks, trueWalks, firstRow, lastRow, latticeOnes;
   arma::imat nn;
   arma::Col<T> unitCell, ctrwTimes, eaMSD, eataMSD, ergodicity;
   arma::Mat<T> eaMSDall, eataMSDall, taMSD;
@@ -265,8 +271,6 @@ private:
     analysis.col(1) = eataMSD;
     analysis.col(2) = ergodicity;
     analysis.cols(3, nWalks + 2) = taMSD;
-
-    return;
   }
 
   double TAMSD(const arma::mat &walk, const uint64_t t, const uint64_t delta)
@@ -286,14 +290,10 @@ private:
     std::normal_distribution<double> NormalDistribution(0, noise);
     noiseCube.imbue([&]() { return NormalDistribution(RNG); });
     walksCoords += noiseCube;
-
-    return;
   }
 
-  void RandomWalks()
+  void PossibleStartPoints()
   {
-    arma::ivec latticeOnes;
-
     // Set up selection of random start point
     //  - on largest cluster, or
     //  - on ALL clusters
@@ -314,6 +314,11 @@ private:
       latticeOnes = arma::regspace<arma::ivec>(0, N - 1);
       latticeOnes = latticeOnes.elem(find(lattice != EMPTY));
     }
+  }
+
+  void RandomWalks()
+  {
+    PossibleStartPoints(); // Populate start points
 
     std::uniform_int_distribution<uint32_t> RandSample(0, static_cast<uint32_t>(latticeOnes.n_elem) - 1);
 
@@ -349,7 +354,7 @@ private:
 
       if (countLoop == countMax) // If no nearest neighbours, set the whole walk to that site
       {
-        walks = pos * arma::ones<arma::ivec>(simLength);
+        walks.fill(pos);
         boundaryDetect.zeros();
       }
       else
@@ -389,20 +394,16 @@ private:
       ctrwTimes.set_size(simLength);
       if (beta > 0.)
       {
-        // Draw CTRW variates from exponential distribution
-        std::exponential_distribution<double> ExponentialDistribution(beta);
-        ctrwTimes.imbue([&]() { return ExponentialDistribution(RNG); });
-
-        // Transform to Pareto distribution and accumulate
-        ctrwTimes = arma::cumsum(tau0 * arma::exp(ctrwTimes));
+        std::exponential_distribution<double> ExponentialDistribution(beta); // Create exponential distribution
+        ctrwTimes.imbue([&]() { return ExponentialDistribution(RNG); });     // Draw CTRW random variates
+        ctrwTimes = arma::cumsum(tau0 * arma::exp(ctrwTimes));               // Transform to Pareto distribution and accumulate
       }
       else
       {
         ctrwTimes = arma::linspace<arma::vec>(1, simLength, simLength);
       }
 
-      // Only keep times within range [0, nSteps]
-      arma::uvec boundaryTime_ = arma::find(ctrwTimes >= nSteps, 1, "first");
+      arma::uvec boundaryTime_ = arma::find(ctrwTimes >= nSteps, 1, "first"); // Only keep times within range [0, nSteps]
       int64_t boundaryTime = boundaryTime_(0);
       ctrwTimes = ctrwTimes(arma::span(0, boundaryTime));
       ctrwTimes(boundaryTime) = nSteps;
@@ -421,9 +422,9 @@ private:
 
       int64_t nxCell = 0;
       int64_t nyCell = 0;
-      for (size_t nstep = 0; nstep < nSteps; nstep++) // Convert the walk to the coordinate system
+      for (size_t n = 0; n < nSteps; n++) // Convert the walk to the coordinate system
       {
-        switch (boundaryTrue(nstep))
+        switch (boundaryTrue(n))
         {
         case 1:
           nyCell++;
@@ -441,11 +442,10 @@ private:
         default:
           break;
         }
-        walksCoords(0, nstep, i) = latticeCoords(0, trueWalks(nstep)) + nxCell * unitCell(0);
-        walksCoords(1, nstep, i) = latticeCoords(1, trueWalks(nstep)) + nyCell * unitCell(1);
+        walksCoords(0, n, i) = latticeCoords(0, trueWalks(n)) + nxCell * unitCell(0);
+        walksCoords(1, n, i) = latticeCoords(1, trueWalks(n)) + nyCell * unitCell(1);
       }
     }
-    return;
   }
 
   void BuildLattice()
@@ -508,7 +508,6 @@ private:
       unitCell(0) += 1;
       unitCell(1) += 1;
     }
-    return;
   }
 
   arma::ivec GetOccupiedNeighbours(const int64_t pos)
@@ -538,7 +537,6 @@ private:
       occupation(i) = occupation(j);
       occupation(j) = t_;
     }
-    return;
   }
 
   int64_t FindRoot(int64_t i)
@@ -591,7 +589,6 @@ private:
         }
       }
     }
-    return;
   }
 
   // Nearest neighbours of a honeycomb lattice with
@@ -703,7 +700,6 @@ private:
         currentCol = count % 4;
       }
     }
-    return;
   }
 
   // Nearest neighbours of a square lattice
@@ -725,7 +721,6 @@ private:
         nn(0, i) = i - gridSize + 1;
       }
     }
-    return;
   }
 };
 
