@@ -445,9 +445,10 @@ private:
       double xx, yy;
       uint64_t count = 0;
       uint64_t currentCol = 0;
+
       for (size_t i = 0; i < 4 * gridSize; i++)
       {
-        for (size_t j = gridSize - 1; j >= 0; j--)
+        for (int64_t j = static_cast<int64_t>(gridSize - 1); j >= 0; j--)
         {
           currentCol = i % 4;
           switch (currentCol)
