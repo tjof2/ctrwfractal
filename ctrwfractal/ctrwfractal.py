@@ -18,7 +18,7 @@
 
 import numpy as np
 
-from ._ctrwfractal import ctrw_fractal
+from ._ctrwfractal import ctrw_fractal_double
 
 
 class CTRWfractal:
@@ -86,7 +86,7 @@ class CTRWfractal:
         else:
             self.threshold_ = self.threshold
 
-        self.lattice_, self.analysis_, self.walks_, _ = ctrw_fractal(
+        res = ctrw_fractal_double(
             grid_size=self.grid_size,
             n_walks=self.n_walks,
             n_steps=self.n_steps,
@@ -99,5 +99,8 @@ class CTRWfractal:
             random_seed=self.random_seed,
             n_jobs=self.n_jobs,
         )
+        self.lattice_ = res[0]
+        self.analysis_ = res[1]
+        self.walks_ = res[2]
 
         return self
