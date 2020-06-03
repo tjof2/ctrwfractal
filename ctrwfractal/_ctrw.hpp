@@ -50,7 +50,8 @@ public:
       const double noise,
       const uint8_t latticeType,
       const uint8_t walkType,
-      const int32_t nJobs) : gridSize(gridSize),
+      const int64_t randomSeed,
+      const int64_t nJobs) : gridSize(gridSize),
                              nWalks(nWalks),
                              nSteps(nSteps),
                              threshold(threshold),
@@ -59,6 +60,7 @@ public:
                              noise(noise),
                              latticeType(latticeType),
                              walkType(walkType),
+                             randomSeed(randomSeed),
                              nJobs(nJobs)
   {
     simLength = (tau0 < 1.) ? static_cast<uint64_t>(nSteps / tau0) : nSteps;
@@ -72,14 +74,21 @@ public:
     eataMSD.set_size(nSteps - 1);
     eataMSDall.set_size(nSteps - 1, nWalks);
     ergodicity.set_size(nSteps - 1);
+
+    if (randomSeed < 0) // Seed with external entropy from std::random_device
+    {
+      RNG.seed(pcg_extras::seed_seq_from<std::random_device>());
+    }
+    else
+    {
+      RNG.seed(randomSeed);
+    }
   };
 
   ~CTRWfractal(){};
 
-  void Initialize(const int64_t seed)
+  void Initialize()
   {
-    RNG = SeedRNG(seed);
-
     t0 = std::chrono::high_resolution_clock::now();
     PrintFixed(0, "Searching neighbours...    ");
 
@@ -113,7 +122,6 @@ public:
     occupation.set_size(N);
 
     latticeCoords.set_size(2, N); // These are exported
-    latticeClusters.set_size(N);
     analysis.set_size(nSteps - 1, nWalks + 3);
     walksCoords.set_size(2, nSteps, nWalks);
 
@@ -178,15 +186,15 @@ public:
     return;
   }
 
+  arma::Col<int64_t> lattice;
   arma::Mat<T> latticeCoords, analysis;
-  arma::Col<int64_t> latticeClusters;
   arma::Cube<T> walksCoords;
 
 private:
   uint64_t gridSize, nWalks, nSteps;
   double threshold, beta, tau0, noise;
   uint8_t latticeType, walkType;
-  int32_t nJobs;
+  int64_t randomSeed, nJobs;
 
   uint64_t N, simLength;
   int64_t EMPTY;
@@ -196,7 +204,7 @@ private:
   const double sqrt3o2 = 0.8660254037844386;
   const double permConstant = 2.3283064e-10;
 
-  arma::ivec lattice, occupation, walks, trueWalks, firstRow, lastRow;
+  arma::ivec occupation, walks, trueWalks, firstRow, lastRow;
   arma::imat nn;
   arma::Col<T> unitCell, ctrwTimes, eaMSD, eataMSD, ergodicity;
   arma::Mat<T> eaMSDall, eataMSDall, taMSD;
@@ -475,7 +483,6 @@ private:
           }
           latticeCoords(0, count) = xx;
           latticeCoords(1, count) = yy;
-          latticeClusters(count) = (lattice(count) == EMPTY) ? 0 : lattice(count);
           count++;
         }
       }
@@ -493,7 +500,6 @@ private:
         {
           latticeCoords(0, count) = i;
           latticeCoords(1, count) = j;
-          latticeClusters(count) = (lattice(count) == EMPTY) ? 0 : lattice(count);
           count++;
         }
       }
@@ -721,19 +727,6 @@ private:
     }
     return;
   }
-
-  pcg64 SeedRNG(const int64_t seed)
-  {
-    if (seed < 0) // Initialize random seed
-    {
-      pcg_extras::seed_seq_from<std::random_device> seedSource;
-      return pcg64(seedSource);
-    }
-    else // User-defined seed
-    {
-      return pcg64(seed);
-    }
-  }
 };
 
 template <typename T>
@@ -764,13 +757,14 @@ uint64_t CTRWwrapper(
       noise,
       latticeType,
       walkType,
+      randomSeed,
       nJobs);
 
-  sim->Initialize(randomSeed);
+  sim->Initialize();
   sim->Run();
 
   lattice = sim->latticeCoords;
-  clusters = sim->latticeClusters;
+  clusters = sim->lattice;
   analysis = sim->analysis;
   walks = sim->walksCoords;
 

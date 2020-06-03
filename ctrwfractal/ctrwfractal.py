@@ -43,7 +43,7 @@ class CTRWfractal:
         noise=0.0,
         lattice_type=0,
         walk_type=0,
-        random_seed=1,
+        random_seed=-1,
         n_jobs=-1,
     ):
         self.grid_size = grid_size

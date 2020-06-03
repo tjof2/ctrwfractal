@@ -44,7 +44,7 @@ def ctrw_fractal_double(uint64_t grid_size = 128,
                         double noise = 0.0,
                         uint8_t lattice_type = 0,
                         uint8_t walk_type = 0,
-                        int64_t random_seed = 0,
+                        int64_t random_seed = -1,
                         int64_t n_jobs = -1):
 
     cdef np.ndarray[int64_t, ndim=1] clusters
@@ -77,8 +77,8 @@ def ctrw_fractal_double(uint64_t grid_size = 128,
                             noise,
                             lattice_type,
                             walk_type,
-                            n_jobs,
-                            random_seed)
+                            random_seed,
+                            n_jobs)
 
     clusters = numpy_from_col_i(_clusters)
     lattice = numpy_from_mat_d(_lattice)
