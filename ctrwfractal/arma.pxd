@@ -23,10 +23,26 @@ import numpy as np
 cimport numpy as np
 cimport cython
 from libcpp cimport bool
+from libc.stdint cimport int64_t
 
 
 cdef extern from "<armadillo>" namespace "arma" nogil:
     ctypedef int uword
+
+    cdef cppclass Col[T]:
+        const uword n_rows
+        const uword n_elem
+
+        Col() nogil
+
+        Col(uword n_rows) nogil
+
+        Col(T* aux_mem,
+            uword n_rows,
+            bool copy_aux_mem,
+            bool strict) nogil
+
+        T *memptr() nogil
 
     cdef cppclass Mat[T]:
         const uword n_rows
@@ -64,6 +80,13 @@ cdef extern from "<armadillo>" namespace "arma" nogil:
 
         T *memptr() nogil
 
+
+cdef inline Col[int64_t] numpy_to_col_i(np.ndarray[int64_t, ndim=1] X):
+    if not X.flags.f_contiguous:
+        X = X.copy(order="F")
+    return Col[int64_t](<int64_t*> X.data, X.shape[0], False, False)
+
+
 cdef inline Mat[double] numpy_to_mat_d(np.ndarray[double, ndim=2] X):
     if not X.flags.f_contiguous:
         X = X.copy(order="F")
@@ -86,6 +109,22 @@ cdef inline Cube[float] numpy_to_cube_f(np.ndarray[float, ndim=3] X):
     if not X.flags.f_contiguous:
         X = X.copy(order="F")
     return Cube[float](<float*> X.data, X.shape[0], X.shape[1], X.shape[2], False, False)
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+cdef inline np.ndarray[int64_t, ndim=1] numpy_from_col_i(Col[int64_t] &m):
+    cdef np.ndarray[int64_t, ndim=1] arr
+    cdef int64_t *pArr
+    cdef int64_t *pM
+    arr = np.ndarray((m.n_rows), dtype=np.int64, order='F')
+    pArr = <int64_t *>arr.data
+    pM = m.memptr()
+
+    for i in range(m.n_rows):
+        pArr[i] = pM[i]
+
+    return arr
 
 
 @cython.boundscheck(False)

@@ -100,7 +100,8 @@ class CTRWfractal:
             n_jobs=self.n_jobs,
         )
         self.lattice_ = res[0]
-        self.analysis_ = res[1]
-        self.walks_ = res[2]
+        self.clusters_ = res[1]
+        self.analysis_ = res[2]
+        self.walks_ = res[3]
 
         return self

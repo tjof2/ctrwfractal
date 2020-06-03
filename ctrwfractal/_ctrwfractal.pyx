@@ -25,11 +25,11 @@ cimport cython
 from libcpp cimport bool
 from libc.stdint cimport uint8_t, uint64_t, int64_t
 
-from .arma cimport Mat, Cube, numpy_from_mat_d, numpy_from_cube_d
+from .arma cimport Col, Mat, Cube, numpy_from_mat_d, numpy_from_cube_d, numpy_from_col_i
 
 
 cdef extern from "_ctrw.hpp":
-    cdef uint64_t c_ctrw "CTRWwrapper"[T] (Mat[T] &, Mat[T] &, Cube[T] &,
+    cdef uint64_t c_ctrw "CTRWwrapper"[T] (Mat[T] &, Col[int64_t] &, Mat[T] &, Cube[T] &,
                                            uint64_t, uint64_t, uint64_t,
                                            double, double, double, double,
                                            uint8_t, uint8_t, int64_t, int64_t)
@@ -47,21 +47,25 @@ def ctrw_fractal_double(uint64_t grid_size = 128,
                         int64_t random_seed = 0,
                         int64_t n_jobs = -1):
 
+    cdef np.ndarray[int64_t, ndim=1] clusters
     cdef np.ndarray[double, ndim=2] lattice
     cdef np.ndarray[double, ndim=2] analysis
     cdef np.ndarray[double, ndim=3] walks
 
+    cdef Col[int64_t] _clusters
     cdef Mat[double] _lattice
     cdef Mat[double] _analysis
     cdef Cube[double] _walks
 
     cdef uint64_t result
 
+    _clusters = Col[int64_t]()
     _lattice = Mat[double]()
     _analysis = Mat[double]()
     _walks = Cube[double]()
 
     result = c_ctrw[double](_lattice,
+                            _clusters,
                             _analysis,
                             _walks,
                             grid_size,
@@ -76,9 +80,10 @@ def ctrw_fractal_double(uint64_t grid_size = 128,
                             n_jobs,
                             random_seed)
 
+    clusters = numpy_from_col_i(_clusters)
     lattice = numpy_from_mat_d(_lattice)
     analysis = numpy_from_mat_d(_analysis)
     walks = numpy_from_cube_d(_walks)
 
-    return lattice, analysis, walks, result
+    return lattice, clusters, analysis, walks, result
 

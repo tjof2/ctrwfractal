@@ -112,7 +112,8 @@ public:
     lattice.set_size(N); // Set array sizes
     occupation.set_size(N);
 
-    latticeCoords.set_size(3, N); // These are exported
+    latticeCoords.set_size(2, N); // These are exported
+    latticeClusters.set_size(N);
     analysis.set_size(nSteps - 1, nWalks + 3);
     walksCoords.set_size(2, nSteps, nWalks);
 
@@ -178,6 +179,7 @@ public:
   }
 
   arma::Mat<T> latticeCoords, analysis;
+  arma::Col<int64_t> latticeClusters;
   arma::Cube<T> walksCoords;
 
 private:
@@ -473,7 +475,7 @@ private:
           }
           latticeCoords(0, count) = xx;
           latticeCoords(1, count) = yy;
-          latticeCoords(2, count) = (lattice(count) == EMPTY) ? 0 : lattice(count);
+          latticeClusters(count) = (lattice(count) == EMPTY) ? 0 : lattice(count);
           count++;
         }
       }
@@ -491,7 +493,7 @@ private:
         {
           latticeCoords(0, count) = i;
           latticeCoords(1, count) = j;
-          latticeCoords(2, count) = (lattice(count) == EMPTY) ? 0 : lattice(count);
+          latticeClusters(count) = (lattice(count) == EMPTY) ? 0 : lattice(count);
           count++;
         }
       }
@@ -737,6 +739,7 @@ private:
 template <typename T>
 uint64_t CTRWwrapper(
     arma::Mat<T> &lattice,
+    arma::Col<int64_t> &clusters,
     arma::Mat<T> &analysis,
     arma::Cube<T> &walks,
     const uint64_t gridSize,
@@ -767,6 +770,7 @@ uint64_t CTRWwrapper(
   sim->Run();
 
   lattice = sim->latticeCoords;
+  clusters = sim->latticeClusters;
   analysis = sim->analysis;
   walks = sim->walksCoords;
 
