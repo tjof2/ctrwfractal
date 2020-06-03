@@ -36,6 +36,7 @@
 #include "utils/pcg_random.hpp"
 #include "utils/utils.hpp"
 
+template <typename T>
 class CTRWfractal
 {
 public:
@@ -79,7 +80,7 @@ public:
   {
     RNG = SeedRNG(seed);
 
-    auto tStart = std::chrono::high_resolution_clock::now();
+    t0 = std::chrono::high_resolution_clock::now();
     PrintFixed(0, "Searching neighbours...    ");
 
     if (latticeType == 1)
@@ -104,9 +105,8 @@ public:
       BoundariesSquare();
     }
 
-    auto tEnd = std::chrono::high_resolution_clock::now();
-    auto tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count() * 1E-6;
-    PrintFixed(6, tElapsed, " s\n");
+    t1 = std::chrono::high_resolution_clock::now();
+    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
 
     EMPTY = (-N - 1);    // Define empty index
     lattice.set_size(N); // Set array sizes
@@ -123,69 +123,62 @@ public:
   {
 
     PrintFixed(0, "Randomizing occupations... ");
-    auto tStart = std::chrono::high_resolution_clock::now();
+    t0 = std::chrono::high_resolution_clock::now();
 
     Permutation(); // Randomize the order in which the sites are occupied
 
-    auto tEnd = std::chrono::high_resolution_clock::now();
-    auto tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count() * 1E-6;
-    PrintFixed(6, tElapsed, " s\n");
+    t1 = std::chrono::high_resolution_clock::now();
+    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
 
     PrintFixed(0, "Running percolation...     ");
-    tStart = std::chrono::high_resolution_clock::now();
+    t0 = std::chrono::high_resolution_clock::now();
 
     Percolate(); // Run the percolation algorithm
 
-    tEnd = std::chrono::high_resolution_clock::now();
-    tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count() * 1E-6;
-    PrintFixed(6, tElapsed, " s\n");
+    t1 = std::chrono::high_resolution_clock::now();
+    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
 
     PrintFixed(0, "Building lattice...        ");
-    tStart = std::chrono::high_resolution_clock::now();
+    t0 = std::chrono::high_resolution_clock::now();
 
     BuildLattice(); // Build the lattice coordinates
 
-    tEnd = std::chrono::high_resolution_clock::now();
-    tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count() * 1E-6;
-    PrintFixed(6, tElapsed, " s\n");
+    t1 = std::chrono::high_resolution_clock::now();
+    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
 
     if (nWalks > 0) // Run the random walks and analyse
     {
       PrintFixed(0, "Simulating random walks... ");
-      tStart = std::chrono::high_resolution_clock::now();
+      t0 = std::chrono::high_resolution_clock::now();
 
       RandomWalks();
 
-      tEnd = std::chrono::high_resolution_clock::now();
-      tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count() * 1E-6;
-      PrintFixed(6, tElapsed, " s\n");
+      t1 = std::chrono::high_resolution_clock::now();
+      PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
 
       if (noise > 0.) // Add noise to walk
       {
         PrintFixed(0, "Adding noise...            ");
-        tStart = std::chrono::high_resolution_clock::now();
+        t0 = std::chrono::high_resolution_clock::now();
 
         AddNoise();
-        tEnd = std::chrono::high_resolution_clock::now();
-
-        tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count() * 1E-6;
-        PrintFixed(6, tElapsed, " s\n");
+        t1 = std::chrono::high_resolution_clock::now();
+        PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
       }
 
       PrintFixed(0, "Analysing random walks...  ");
-      tStart = std::chrono::high_resolution_clock::now();
+      t0 = std::chrono::high_resolution_clock::now();
 
       AnalyseWalks();
 
-      tEnd = std::chrono::high_resolution_clock::now();
-      tElapsed = std::chrono::duration_cast<std::chrono::microseconds>(tEnd - tStart).count() * 1E-6;
-      PrintFixed(6, tElapsed, " s\n");
+      t1 = std::chrono::high_resolution_clock::now();
+      PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
     }
     return;
   }
 
-  arma::mat latticeCoords, analysis;
-  arma::cube walksCoords;
+  arma::Mat<T> latticeCoords, analysis;
+  arma::Cube<T> walksCoords;
 
 private:
   uint64_t gridSize, nWalks, nSteps;
@@ -203,11 +196,13 @@ private:
 
   arma::ivec lattice, occupation, walks, trueWalks, firstRow, lastRow;
   arma::imat nn;
-  arma::vec unitCell, ctrwTimes, eaMSD, eataMSD, ergodicity;
-  arma::mat eaMSDall, eataMSDall, taMSD;
+  arma::Col<T> unitCell, ctrwTimes, eaMSD, eataMSD, ergodicity;
+  arma::Mat<T> eaMSDall, eataMSDall, taMSD;
 
   pcg64 RNG;
   std::uniform_int_distribution<uint32_t> UniformDistribution{0, 4294967294};
+
+  std::chrono::high_resolution_clock::time_point t0, t1;
 
   inline double SquaredDist(const double &x1, const double &x2, const double &y1, const double &y2)
   {
@@ -738,10 +733,11 @@ private:
   }
 };
 
+template <typename T>
 uint64_t CTRWwrapper(
-    arma::mat &lattice,
-    arma::mat &analysis,
-    arma::cube &walks,
+    arma::Mat<T> &lattice,
+    arma::Mat<T> &analysis,
+    arma::Cube<T> &walks,
     const uint64_t gridSize,
     const uint64_t nWalks,
     const uint64_t nSteps,
@@ -754,7 +750,7 @@ uint64_t CTRWwrapper(
     const int64_t randomSeed,
     const int64_t nJobs)
 {
-  CTRWfractal *sim = new CTRWfractal(
+  CTRWfractal<T> *sim = new CTRWfractal<T>(
       gridSize,
       nWalks,
       nSteps,

@@ -22,6 +22,7 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
+#include <chrono>
 #include <iostream>
 #include <iomanip>
 #include <thread>
@@ -40,6 +41,12 @@ template <typename Arg, typename... Args>
 void PrintFixed(const uint32_t precision, Arg &&arg, Args &&... args)
 {
     Print(std::cout, std::fixed, std::setprecision(precision), arg, args...);
+}
+
+double ElapsedSeconds(std::chrono::high_resolution_clock::time_point t0,
+                      std::chrono::high_resolution_clock::time_point t1)
+{
+    return static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count() * 1E-6);
 }
 
 template <typename Function, typename Integer_Type>

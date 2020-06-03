@@ -29,10 +29,10 @@ from .arma cimport Mat, Cube, numpy_from_mat_d, numpy_from_cube_d
 
 
 cdef extern from "_ctrw.hpp":
-    cdef uint64_t c_ctrw "CTRWwrapper" (Mat[double] &, Mat[double] &, Cube[double] &,
-                                        uint64_t, uint64_t, uint64_t,
-                                        double, double, double, double,
-                                        uint8_t, uint8_t, int64_t, int64_t)
+    cdef uint64_t c_ctrw "CTRWwrapper"[T] (Mat[T] &, Mat[T] &, Cube[T] &,
+                                           uint64_t, uint64_t, uint64_t,
+                                           double, double, double, double,
+                                           uint8_t, uint8_t, int64_t, int64_t)
 
 
 def ctrw_fractal(uint64_t grid_size = 128,
@@ -61,20 +61,20 @@ def ctrw_fractal(uint64_t grid_size = 128,
     _analysis = Mat[double]()
     _walks = Cube[double]()
 
-    result = c_ctrw(_lattice,
-                    _analysis,
-                    _walks,
-                    grid_size,
-                    n_walks,
-                    n_steps,
-                    threshold,
-                    beta,
-                    tau0,
-                    noise,
-                    lattice_type,
-                    walk_type,
-                    n_jobs,
-                    random_seed)
+    result = c_ctrw[double](_lattice,
+                            _analysis,
+                            _walks,
+                            grid_size,
+                            n_walks,
+                            n_steps,
+                            threshold,
+                            beta,
+                            tau0,
+                            noise,
+                            lattice_type,
+                            walk_type,
+                            n_jobs,
+                            random_seed)
 
     lattice = numpy_from_mat_d(_lattice)
     analysis = numpy_from_mat_d(_analysis)
