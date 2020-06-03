@@ -23,40 +23,36 @@ import numpy as np
 cimport numpy as np
 cimport cython
 from libcpp cimport bool
-from libc.stdint cimport uint8_t, uint32_t, int64_t
+from libc.stdint cimport uint8_t, uint64_t, int64_t
 
 from .arma cimport (
     Mat,
     Cube,
     numpy_to_mat_d,
     numpy_from_mat_d,
-    numpy_to_mat_f,
-    numpy_from_mat_f,
     numpy_to_cube_d,
     numpy_from_cube_d,
-    numpy_to_cube_f,
-    numpy_from_cube_f
 )
 
 
 cdef extern from "_ctrw.hpp":
-    cdef uint32_t c_ctrw "CTRWwrapper"[T] (Mat[T] &, Mat[T] &, Cube[T] &,
-                                           uint32_t, uint32_t, uint32_t,
-                                           double, double, double, double,
-                                           uint8_t, uint8_t, int64_t, int64_t)
+    cdef uint64_t c_ctrw "CTRWwrapper" (Mat[double] &, Mat[double] &, Cube[double] &,
+                                        uint64_t, uint64_t, uint64_t,
+                                        double, double, double, double,
+                                        uint8_t, uint8_t, int64_t, int64_t)
 
 
-def ctrw_fractal_double(uint32_t gridSize = 128,
-                        uint32_t nWalks = 0,
-                        uint32_t walkLength = 1,
-                        double threshold = -1.0,
-                        double beta = 0.0,
-                        double tau0 = 1.0,
-                        double noise = 0.0,
-                        uint8_t latticeMode = 0,
-                        uint8_t walkMode = 0,
-                        int64_t randomSeed = 0,
-                        int64_t nJobs = -1):
+def ctrw_fractal(uint64_t gridSize = 128,
+                 uint64_t nWalks = 0,
+                 uint64_t walkLength = 1,
+                 double threshold = -1.0,
+                 double beta = 0.0,
+                 double tau0 = 1.0,
+                 double noise = 0.0,
+                 uint8_t latticeMode = 0,
+                 uint8_t walkMode = 0,
+                 int64_t randomSeed = 0,
+                 int64_t nJobs = -1):
 
     cdef np.ndarray[double, ndim=2] lattice
     cdef np.ndarray[double, ndim=2] analysis
@@ -66,26 +62,26 @@ def ctrw_fractal_double(uint32_t gridSize = 128,
     cdef Mat[double] _analysis
     cdef Cube[double] _walks
 
-    cdef uint32_t result
+    cdef uint64_t result
 
     _lattice = Mat[double]()
     _analysis = Mat[double]()
     _walks = Cube[double]()
 
-    result = c_ctrw[double](_lattice,
-                            _analysis,
-                            _walks,
-                            gridSize,
-                            nWalks,
-                            walkLength,
-                            threshold,
-                            beta,
-                            tau0,
-                            noise,
-                            latticeMode,
-                            walkMode,
-                            nJobs,
-                            randomSeed)
+    result = c_ctrw(_lattice,
+                    _analysis,
+                    _walks,
+                    gridSize,
+                    nWalks,
+                    walkLength,
+                    threshold,
+                    beta,
+                    tau0,
+                    noise,
+                    latticeMode,
+                    walkMode,
+                    nJobs,
+                    randomSeed)
 
     lattice = numpy_from_mat_d(_lattice)
     analysis = numpy_from_mat_d(_analysis)

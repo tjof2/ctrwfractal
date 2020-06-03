@@ -18,7 +18,7 @@
 
 import numpy as np
 
-from ._ctrwfractal import ctrw_fractal_double
+from ._ctrwfractal import ctrw_fractal
 
 
 class CTRWfractal:
@@ -62,7 +62,7 @@ class CTRWfractal:
         else:
             fraction = self.threshold
 
-        lattice, analysis, walks, result = ctrw_fractal_double(
+        lattice, analysis, walks, result = ctrw_fractal(
             gridSize=self.gridSize,
             nWalks=self.nWalks,
             walkLength=self.walkLength,
