@@ -3,6 +3,7 @@ language: python
 env:
   global:
     - PIP_TEST_REQS="coverage pytest pytest-cov coveralls"
+    - PYTEST_ARGS="--pyargs ctrwfractal"
 
 before_install:
   - if [${TRAVIS_OS_NAME} == "linux"]; then sudo apt-get update -qq; fi
@@ -11,7 +12,7 @@ before_install:
 matrix:
   include:
     - name: "Linux, 3.7, pip, gcc"
-      env: COMPILER_NAME=gcc CXX=g++-7 CC=gcc-7
+      env: COMPILER_NAME=gcc CXX=g++-7 CC=gcc-7 PYTEST_ARGS="--pyargs ctrwfractal --cov=ctrwfractal"
       python: 3.7
       addons:
         apt:
@@ -32,4 +33,6 @@ script:
   - pytest --cov=ctrwfractal ctrwfractal/
 
 after_success:
-  - coveralls
+  - if [[ $PYTEST_ARGS == *"--cov=ctrwfractal"* ]]; then
+      coveralls
+    fi
