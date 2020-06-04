@@ -37,5 +37,5 @@ script:
 
 after_success:
   - if [[ $PYTEST_ARGS == *"--cov=ctrwfractal"* ]]; then
-      coveralls
+      coveralls;
     fi
