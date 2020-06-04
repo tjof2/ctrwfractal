@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2016-2020 Tom Furnival
 #
 # This file is part of CTRWfractal.

@@ -2,10 +2,11 @@ language: python
 
 env:
   global:
-    - PIP_REQS="numpy cython coverage pytest pytest-cov coveralls"
+    - PIP_TEST_REQS="coverage pytest pytest-cov coveralls"
 
 before_install:
   - if [${TRAVIS_OS_NAME} == "linux"]; then sudo apt-get update -qq; fi
+  - sh ./install-dependencies.sh # Required because libarmadillo-dev on Travis is out-of-date
 
 matrix:
   include:
@@ -15,20 +16,20 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-7', 'libblas-dev', 'liblapack-dev', 'libopenblas-dev', 'libarmadillo-dev']
+          packages: ['g++-7', 'libblas-dev', 'liblapack-dev', 'libopenblas-dev']
     - name: "Linux, 3.8, pip, gcc"
       env: COMPILER_NAME=gcc CXX=g++-7 CC=gcc-7
       python: 3.8
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-7', 'libblas-dev', 'liblapack-dev', 'libopenblas-dev', 'libarmadillo-dev']
+          packages: ['g++-7', 'libblas-dev', 'liblapack-dev', 'libopenblas-dev']
 
 script:
   - which python
-  - pip install --upgrade $PIP_REQS
   - pip install --upgrade -e .
-#   - pytest --cov=robustpca robustpca/
+  - pip install --upgrade $PIP_TEST_REQS
+  - pytest --cov=ctrwfractal ctrwfractal/
 
-# after_success:
-#   - coveralls
+after_success:
+  - coveralls
