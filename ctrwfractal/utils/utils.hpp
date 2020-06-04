@@ -131,6 +131,12 @@ void SetMemState(T &t, int state)
 }
 
 template <typename T>
+void SetMemStateCube(T &t, int state)
+{
+    const_cast<arma::uword &>(t.mem_state) = state;
+}
+
+template <typename T>
 size_t GetMemState(T &t)
 {
     if (t.mem && t.n_elem <= arma::arma_config::mat_prealloc)

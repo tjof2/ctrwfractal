@@ -89,6 +89,7 @@ cdef extern from "<armadillo>" namespace "arma" nogil:
 
 cdef extern from "utils/utils.hpp":
     void SetMemState[T](T& m, int state)
+    void SetMemStateCube[T](T& m, int state)
     size_t GetMemState[T](T& m)
     double* GetMemory(Col[double]& m)
     double* GetMemory(Mat[double]& m)
@@ -96,24 +97,6 @@ cdef extern from "utils/utils.hpp":
     int64_t* GetMemory(Col[int64_t]& m)
     int64_t* GetMemory(Mat[int64_t]& m)
     int64_t* GetMemory(Cube[int64_t]& m)
-
-
-cdef Col[int64_t] numpy_to_col_i(np.ndarray[int64_t, ndim=1] X) except +:
-    if not X.flags.f_contiguous:
-        X = X.copy(order="F")
-    return Col[int64_t](<int64_t*> X.data, X.shape[0], False, False)
-
-
-cdef Mat[double] numpy_to_mat_d(np.ndarray[double, ndim=2] X) except +:
-    if not X.flags.f_contiguous:
-        X = X.copy(order="F")
-    return Mat[double](<double*> X.data, X.shape[0], X.shape[1], False, False)
-
-
-cdef Cube[double] numpy_to_cube_d(np.ndarray[double, ndim=3] X) except +:
-    if not X.flags.f_contiguous:
-        X = X.copy(order="F")
-    return Cube[double](<double*> X.data, X.shape[0], X.shape[1], X.shape[2], False, False)
 
 
 cdef np.ndarray[int64_t, ndim=1] numpy_from_col_i(Col[int64_t] &m) except +:
@@ -127,50 +110,29 @@ cdef np.ndarray[int64_t, ndim=1] numpy_from_col_i(Col[int64_t] &m) except +:
     return arr
 
 
-# @cython.boundscheck(False)
-# @cython.wraparound(False)
-# cdef inline np.ndarray[int64_t, ndim=1] numpy_from_col_i(Col[int64_t] &m) except +:
-#     cdef np.ndarray[int64_t, ndim=1] arr
-#     cdef int64_t *pArr
-#     cdef int64_t *pM
-#     arr = np.ndarray((m.n_rows), dtype=np.int64, order='F')
-#     pArr = <int64_t *>arr.data
-#     pM = m.memptr()
+cdef np.ndarray[np.double_t, ndim=2] numpy_from_mat_d(Mat[double] &m) except +:
+    cdef np.npy_intp dims[2]
+    dims[0] = <np.npy_intp> m.n_rows
+    dims[1] = <np.npy_intp> m.n_cols
+    cdef np.ndarray[np.double_t, ndim=2] arr = np.PyArray_SimpleNewFromData(2, &dims[0], np.NPY_DOUBLE, GetMemory(m))
 
-#     for i in range(m.n_rows) except +:
-#         pArr[i] = pM[i]
-
-#     return arr
-
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef np.ndarray[double, ndim=2] numpy_from_mat_d(Mat[double] &m) except +:
-    cdef np.ndarray[double, ndim=2] arr
-    cdef double *pArr
-    cdef double *pM
-    arr = np.ndarray((m.n_rows, m.n_cols), dtype=np.float64, order='F')
-    pArr = <double *>arr.data
-    pM = m.memptr()
-
-    for i in range(m.n_rows * m.n_cols) except +:
-        pArr[i] = pM[i]
+    if GetMemState[Mat[double]](m) == 0:
+        SetMemState[Mat[double]](m, 1)
+        PyArray_ENABLEFLAGS(arr, np.NPY_OWNDATA)
 
     return arr
 
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef np.ndarray[double, ndim=3] numpy_from_cube_d(Cube[double] &m) except +:
-    cdef np.ndarray[double, ndim=3] arr
-    cdef double *pArr
-    cdef double *pM
-    arr = np.ndarray((m.n_rows, m.n_cols, m.n_slices), dtype=np.float64, order='F')
-    pArr = <double *>arr.data
-    pM = m.memptr()
+cdef np.ndarray[np.double_t, ndim=3] numpy_from_cube_d(Cube[double] &m) except +:
+    cdef np.npy_intp dims[3]
+    dims[0] = <np.npy_intp> m.n_rows
+    dims[1] = <np.npy_intp> m.n_cols
+    dims[2] = <np.npy_intp> m.n_slices
+    cdef np.ndarray[np.double_t, ndim=3] arr = np.PyArray_SimpleNewFromData(3, &dims[0], np.NPY_DOUBLE, GetMemory(m))
 
-    for i in range(m.n_rows * m.n_cols * m.n_slices) except +:
-        pArr[i] = pM[i]
+    if GetMemState[Cube[double]](m) == 0:
+        SetMemStateCube[Cube[double]](m, 1)
+        PyArray_ENABLEFLAGS(arr, np.NPY_OWNDATA)
 
     return arr
 
