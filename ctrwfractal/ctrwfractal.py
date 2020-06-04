@@ -96,7 +96,7 @@ class CTRWfractal:
             )
 
         if self.threshold is None:
-            self.threshold_ = lattice_thresholds.get(self.lattice_type_, 0.0)
+            self.threshold_ = lattice_thresholds.get(self.lattice_type, 0.0)
         else:
             self.threshold_ = self.threshold
 

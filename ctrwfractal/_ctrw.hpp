@@ -62,7 +62,9 @@ public:
                              randomSeed(randomSeed),
                              nJobs(nJobs)
   {
-    if ((nWalks > 0) && (nSteps > 0)) // Set array sizes
+    includeWalks = ((nWalks > 0) && (nSteps > 0));
+
+    if (includeWalks) // Set array sizes
     {
       simLength = (tau0 < 1.0) ? static_cast<uint64_t>(nSteps / tau0) : nSteps;
 
@@ -159,13 +161,12 @@ public:
     t1 = GetTime();
     PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
 
-    EMPTY = (-N - 1);    // Define empty index
-    lattice.set_size(N); // Set array sizes
+    EMPTY = (-1 * static_cast<int64_t>(N) - 1); // Define empty index
+    lattice.set_size(N);                        // Set array sizes
     occupation.set_size(N);
+    latticeCoords.set_size(2, N);
 
-    latticeCoords.set_size(2, N); // These are exported
-
-    if ((nWalks > 0) && (nSteps > 0))
+    if (includeWalks)
     {
       analysis.set_size(nSteps - 1, nWalks + 3);
       walksCoords.set_size(2, nSteps, nWalks);
@@ -204,7 +205,7 @@ public:
     t1 = GetTime();
     PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
 
-    if (nWalks > 0)
+    if (includeWalks)
     {
       PrintFixed(0, "Simulating random walks... ");
       t0 = GetTime();
@@ -214,7 +215,7 @@ public:
       t1 = GetTime();
       PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
 
-      if (noise > 0.)
+      if (noise > 0.0)
       {
         PrintFixed(0, "Adding noise...            ");
         t0 = GetTime();
@@ -254,6 +255,7 @@ private:
   uint64_t N, simLength;
   int64_t EMPTY;
   uint8_t neighbourCount;
+  bool includeWalks;
 
   const double sqrt3 = 1.7320508075688772;
   const double sqrt3o2 = 0.8660254037844386;
@@ -268,15 +270,7 @@ private:
 
   pcg64 RNG;
   std::uniform_int_distribution<uint32_t> UniformDistribution{0, maxSites};
-
   std::chrono::high_resolution_clock::time_point t0, t1;
-
-  inline double SquaredDist(const double &x1, const double &x2, const double &y1, const double &y2)
-  {
-    double a = (x1 - x2);
-    double b = (y1 - y2);
-    return a * a + b * b;
-  }
 
   void AnalyseWalks()
   {
@@ -352,6 +346,7 @@ private:
     // Set up selection of random start point
     //  - walkType = 1 : on largest cluster, or
     //  - walkType = 0 : on ALL clusters
+
     if (walkType == 1)
     {
       int64_t latticeMin = lattice.elem(find(lattice > EMPTY)).min();
@@ -572,10 +567,12 @@ private:
   {
     arma::Col<uint8_t> checkNeighbour(neighbourCount, arma::fill::zeros);
     arma::ivec neighbours = nn.col(pos);
+
     for (size_t k = 0; k < neighbourCount; k++)
     {
       checkNeighbour(k) = (lattice(neighbours(k)) == EMPTY) ? 0 : 1;
     }
+
     neighbours = neighbours.elem(find(checkNeighbour == 1));
     return neighbours;
   }
@@ -821,7 +818,7 @@ uint64_t CTRWwrapper(
   analysis = sim->analysis;
   walks = sim->walksCoords;
 
-  //delete sim;
+  delete sim;
   return 0;
 };
 
