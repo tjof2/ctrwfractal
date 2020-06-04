@@ -95,10 +95,13 @@ class CTRWfractal:
                 f"instead of one of {walk_types.keys()}"
             )
 
-        if self.threshold is None:
-            self.threshold_ = lattice_thresholds.get(self.lattice_type, 0.0)
-        else:
-            self.threshold_ = self.threshold
+        # If no threshold given, use the critical values
+        # for the given lattice type
+        self.threshold_ = (
+            lattice_thresholds.get(self.lattice_type, 0.0)
+            if self.threshold is None
+            else self.threshold
+        )
 
         # C++ uses noise=0.0 and seed=-1 instead of None
         self.noise_ = 0.0 if self.noise is None else self.noise
