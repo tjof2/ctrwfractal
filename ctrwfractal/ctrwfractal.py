@@ -40,7 +40,7 @@ class CTRWfractal:
         threshold=None,
         walk_type="all",
         n_walks=0,
-        n_steps=1,
+        n_steps=0,
         beta=1.0,
         tau0=1.0,
         noise=None,
