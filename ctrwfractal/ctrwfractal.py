@@ -15,7 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with CTRWfractal.  If not, see <http://www.gnu.org/licenses/>.
 
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 from ._ctrwfractal import ctrw_fractal_double
 
