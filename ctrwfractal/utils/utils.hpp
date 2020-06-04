@@ -28,6 +28,7 @@
 #include <thread>
 #include <vector>
 #include <utility>
+#include <armadillo>
 
 inline double SquaredDist(const double &x1, const double &x2, const double &y1, const double &y2)
 {
@@ -122,5 +123,35 @@ void parallel(Function const &func,
         }
     }
 };
+
+template <typename T>
+void SetMemState(T &t, int state)
+{
+    const_cast<arma::uhword &>(t.mem_state) = state;
+}
+
+template <typename T>
+size_t GetMemState(T &t)
+{
+    if (t.mem && t.n_elem <= arma::arma_config::mat_prealloc)
+        return 0;
+
+    return (size_t)t.mem_state;
+}
+
+template <typename T>
+inline typename T::elem_type *GetMemory(T &m)
+{
+    if (m.mem && m.n_elem <= arma::arma_config::mat_prealloc)
+    {
+        typename T::elem_type *mem = arma::memory::acquire<typename T::elem_type>(m.n_elem);
+        arma::arrayops::copy(mem, m.memptr(), m.n_elem);
+        return mem;
+    }
+    else
+    {
+        return m.memptr();
+    }
+}
 
 #endif
