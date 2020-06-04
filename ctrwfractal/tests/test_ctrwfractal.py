@@ -36,6 +36,7 @@ class TestCTRWfractal:
             assert hasattr(est, attr)
 
         assert est.clusters_.shape == (self.grid_size * self.grid_size,)
+        assert est.walks_.shape == (0, 0, 0)
 
     def test_honeycomb(self):
         est = CTRWfractal(
@@ -47,3 +48,4 @@ class TestCTRWfractal:
             assert hasattr(est, attr)
 
         assert est.clusters_.shape == (4 * self.grid_size * self.grid_size,)
+        assert est.walks_.shape == (0, 0, 0)
