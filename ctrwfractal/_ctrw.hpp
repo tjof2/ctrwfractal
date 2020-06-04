@@ -190,6 +190,11 @@ public:
       t1 = GetTime();
       PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
     }
+    else
+    {
+      analysis.zeros();
+      walksCoords.zeros();
+    }
   }
 
   arma::Col<int64_t> lattice;
