@@ -238,6 +238,9 @@ private:
     eataMSDall.zeros();
     ergodicity.zeros();
 
+    // For long walks / lots of walks, the analysis is the bottleneck,
+    // so we parallelize over nJobs using threading.
+
     auto &&func = [&](uint64_t i) {
       arma::vec::fixed<2> walkOrigin, walkStep;
       walkOrigin = walksCoords.slice(i).col(0);
@@ -250,6 +253,7 @@ private:
         eataMSDall(j - 1, i) = TAMSD(walksCoords.slice(i), j, 1);     // Ensemble-time-average MSD
       }
     };
+
     parallel(func, static_cast<uint64_t>(0), static_cast<uint64_t>(nWalks), nJobs);
 
     eaMSD.elem(arma::find_nonfinite(eaMSD)).zeros(); // Check for NaNs
