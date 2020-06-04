@@ -818,6 +818,11 @@ uint64_t CTRWwrapper(
   analysis = sim->analysis;
   walks = sim->walksCoords;
 
+  arma::inplace_trans(lattice); // Remember Armadillo is Fortran-contiguous, numpy is C-contiguous
+  arma::inplace_trans(analysis);
+
+  std::cout << walks.slice(0) << std::endl;
+
   delete sim;
   return 0;
 };
