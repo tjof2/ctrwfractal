@@ -12,11 +12,11 @@ ctrwfractal is released free of charge under the GNU General Public License (GPL
 
 ## Installation
 
-The easiest way to install the package is with `pip`:
+<!-- The easiest way to install the package is with `pip`:
 
 ```bash
 $ pip install -U ctrwfractal
-```
+``` -->
 
 #### Building from source
 
@@ -28,12 +28,12 @@ To build the library from source:
 ```bash
 $ tar -xzf ctrwfractal.tar.gz
 $ cd ctrwfractal
+$ sh ./install-dependencies.sh # Optional - this will download, compile and install Armadillo
 $ pip install -e .
 ```
 
 ## Usage
 
-Example usage:
 ```python
 
 from ctrwfractal import CTRWfractal
