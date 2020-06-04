@@ -27,7 +27,6 @@
 #ifndef CTRW_HPP
 #define CTRW_HPP
 
-#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <random>
@@ -63,7 +62,7 @@ public:
                              randomSeed(randomSeed),
                              nJobs(nJobs)
   {
-    simLength = (tau0 < 1.) ? static_cast<uint64_t>(nSteps / tau0) : nSteps;
+    simLength = (tau0 < 1.0) ? static_cast<uint64_t>(nSteps / tau0) : nSteps;
 
     walks.set_size(simLength); // Set array sizes
     ctrwTimes.set_size(simLength);
@@ -89,14 +88,14 @@ public:
 
   void Initialize()
   {
-    t0 = std::chrono::high_resolution_clock::now();
+    t0 = GetTime();
     PrintFixed(0, "Searching neighbours...    ");
 
     switch (latticeType)
     {
     case 1:
       neighbourCount = 3;
-      N = gridSize * gridSize * 4;
+      N = 4 * gridSize * gridSize;
       nn.set_size(neighbourCount, N);
       firstRow.set_size(2 * gridSize);
       lastRow.set_size(2 * gridSize);
@@ -123,7 +122,7 @@ public:
       break;
     }
 
-    t1 = std::chrono::high_resolution_clock::now();
+    t1 = GetTime();
     PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
 
     EMPTY = (-N - 1);    // Define empty index
@@ -139,55 +138,56 @@ public:
   {
 
     PrintFixed(0, "Randomizing occupations... ");
-    t0 = std::chrono::high_resolution_clock::now();
+    t0 = GetTime();
 
     Permutation(); // Randomize the order in which the sites are occupied
 
-    t1 = std::chrono::high_resolution_clock::now();
+    t1 = GetTime();
     PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
 
     PrintFixed(0, "Running percolation...     ");
-    t0 = std::chrono::high_resolution_clock::now();
+    t0 = GetTime();
 
     Percolate(); // Run the percolation algorithm
 
-    t1 = std::chrono::high_resolution_clock::now();
+    t1 = GetTime();
     PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
 
     PrintFixed(0, "Building lattice...        ");
-    t0 = std::chrono::high_resolution_clock::now();
+    t0 = GetTime();
 
     BuildLattice(); // Build the lattice coordinates
 
-    t1 = std::chrono::high_resolution_clock::now();
+    t1 = GetTime();
     PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
 
-    if (nWalks > 0) // Run the random walks and analyse
+    if (nWalks > 0)
     {
       PrintFixed(0, "Simulating random walks... ");
-      t0 = std::chrono::high_resolution_clock::now();
+      t0 = GetTime();
 
-      RandomWalks();
+      RandomWalks(); // Run the random walks
 
-      t1 = std::chrono::high_resolution_clock::now();
+      t1 = GetTime();
       PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
 
-      if (noise > 0.) // Add noise to walk
+      if (noise > 0.)
       {
         PrintFixed(0, "Adding noise...            ");
-        t0 = std::chrono::high_resolution_clock::now();
+        t0 = GetTime();
 
-        AddNoise();
-        t1 = std::chrono::high_resolution_clock::now();
+        AddNoise(); // Add noise to walk
+
+        t1 = GetTime();
         PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
       }
 
       PrintFixed(0, "Analysing random walks...  ");
-      t0 = std::chrono::high_resolution_clock::now();
+      t0 = GetTime();
 
-      AnalyseWalks();
+      AnalyseWalks(); // Calculate statistics for walks
 
-      t1 = std::chrono::high_resolution_clock::now();
+      t1 = GetTime();
       PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
     }
   }
@@ -208,7 +208,9 @@ private:
 
   const double sqrt3 = 1.7320508075688772;
   const double sqrt3o2 = 0.8660254037844386;
-  const double permConstant = 2.3283064e-10;
+
+  const uint32_t maxSites = 4294967294;      // Max uint32_t
+  const double permConstant = 2.3283064e-10; // Equal to 1 / maxSites (max uint32_t)
 
   arma::ivec occupation, walks, trueWalks, firstRow, lastRow, latticeOnes;
   arma::imat nn;
@@ -216,7 +218,7 @@ private:
   arma::Mat<T> eaMSDall, eataMSDall, taMSD;
 
   pcg64 RNG;
-  std::uniform_int_distribution<uint32_t> UniformDistribution{0, 4294967294};
+  std::uniform_int_distribution<uint32_t> UniformDistribution{0, maxSites};
 
   std::chrono::high_resolution_clock::time_point t0, t1;
 
@@ -295,8 +297,8 @@ private:
   void PossibleStartPoints()
   {
     // Set up selection of random start point
-    //  - on largest cluster, or
-    //  - on ALL clusters
+    //  - walkType == 1 : on largest cluster, or
+    //  - walkType == 0 : on ALL clusters
     if (walkType == 1)
     {
       int64_t latticeMin = lattice.elem(find(lattice > EMPTY)).min();
@@ -330,18 +332,17 @@ private:
     for (size_t i = 0; i < nWalks; i++) // Simulate a random walk on the lattice
     {
       uint64_t countLoop = 0;
-      uint64_t lowerBound = 1E5; // Minimum attempts to find a starting site
-      uint64_t upperBound = 1E8; // Maximum attempts to find a starting site
-      uint64_t countMax = std::min(std::max(N, lowerBound), upperBound);
+      uint64_t countMax = std::min(N, static_cast<uint64_t>(1E6)); // Maximum attempts to find a starting site
 
-      int64_t pos;
+      int64_t pos, posLast;
       bool okStart = false;
+      arma::ivec neighbours;
 
       do // Search for a random start position
       {
         pos = latticeOnes(RandSample(RNG));
+        neighbours = GetOccupiedNeighbours(pos);
 
-        arma::ivec neighbours = GetOccupiedNeighbours(pos);
         if (neighbours.n_elem > 0 || countLoop >= countMax) // Check start position has >= 1 occupied nearest neighbours
         {
           okStart = true;
@@ -359,28 +360,30 @@ private:
       }
       else
       {
+        posLast = pos;
         walks(0) = pos;
         boundaryDetect(0) = 0;
+
         for (size_t j = 1; j < simLength; j++)
         {
-          arma::ivec neighbours = GetOccupiedNeighbours(pos);
+          neighbours = GetOccupiedNeighbours(pos);
           std::uniform_int_distribution<uint32_t> RandChoice(0, static_cast<uint32_t>(neighbours.n_elem) - 1);
           pos = neighbours(RandChoice(RNG));
           walks(j) = pos;
 
-          if (arma::any(firstRow == walks(j - 1)) && arma::any(lastRow == pos)) // Walks that hit the top boundary
+          if (arma::any(firstRow == posLast) && arma::any(lastRow == pos)) // Walks that hit the top boundary
           {
             boundaryDetect(j) = 1;
           }
-          else if (arma::any(lastRow == walks(j - 1)) && arma::any(firstRow == pos)) // Walks that hit the bottom boundary
+          else if (arma::any(lastRow == posLast) && arma::any(firstRow == pos)) // Walks that hit the bottom boundary
           {
             boundaryDetect(j) = 2;
           }
-          else if (walks(j - 1) >= boundary2 && pos < boundary1) // Walks that hit the right boundary
+          else if (posLast >= boundary2 && pos < boundary1) // Walks that hit the right boundary
           {
             boundaryDetect(j) = 3;
           }
-          else if (walks(j - 1) < boundary1 && pos >= boundary2) // Walks that hit the left boundary
+          else if (posLast < boundary1 && pos >= boundary2) // Walks that hit the left boundary
           {
             boundaryDetect(j) = 4;
           }
@@ -388,6 +391,8 @@ private:
           {
             boundaryDetect(j) = 0;
           }
+
+          posLast = pos; // Update last position
         }
       }
 

@@ -43,6 +43,11 @@ void PrintFixed(const uint32_t precision, Arg &&arg, Args &&... args)
     Print(std::cout, std::fixed, std::setprecision(precision), arg, args...);
 }
 
+std::chrono::high_resolution_clock::time_point GetTime()
+{
+    return std::chrono::high_resolution_clock::now();
+}
+
 double ElapsedSeconds(std::chrono::high_resolution_clock::time_point t0,
                       std::chrono::high_resolution_clock::time_point t1)
 {

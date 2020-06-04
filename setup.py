@@ -25,7 +25,7 @@ extensions = [
     Extension(
         "ctrwfractal._ctrwfractal",
         sources=["ctrwfractal/_ctrwfractal.pyx"],
-        include_dirs=["ctrwfractal/", "ctrwfractal/pcg/", np.get_include()],
+        include_dirs=["ctrwfractal/", np.get_include()],
         libraries=["openblas", "lapack", "armadillo"],
         language="c++",
         extra_compile_args=[
@@ -64,8 +64,8 @@ setup(
         "Topic :: Scientific/Engineering :: Physics",
     ],
     packages=find_packages(),
-    install_requires=["numpy"],
-    setup_requires=["wheel", "auditwheel", "cython"],
+    install_requires=["numpy", "pandas", "matplotlib", "cython"],
+    setup_requires=["wheel", "auditwheel"],
     package_data={"": ["LICENSE", "README.md"], "ctrwfractal": ["*.py"]},
     ext_modules=cythonize(extensions),
 )
