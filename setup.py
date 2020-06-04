@@ -64,7 +64,7 @@ setup(
     ],
     packages=find_packages(),
     install_requires=["numpy", "pandas", "matplotlib", "cython"],
-    setup_requires=["wheel", "auditwheel"],
+    setup_requires=["cython", "wheel", "auditwheel"],
     package_data={"": ["LICENSE", "README.md"], "ctrwfractal": ["*.py"]},
     ext_modules=cythonize(extensions),
 )
