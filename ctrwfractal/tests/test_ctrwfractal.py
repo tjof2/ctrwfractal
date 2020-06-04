@@ -26,9 +26,13 @@ class TestCTRWfractal:
         self.seed = 123
         self.grid_size = 32
 
-    def test_square(self):
+    @pytest.mark.parametrize("threshold", [None, 0.5, 0.75])
+    def test_square_no_walks(self, threshold):
         est = CTRWfractal(
-            grid_size=self.grid_size, lattice_type="square", random_seed=self.seed
+            grid_size=self.grid_size,
+            lattice_type="square",
+            threshold=threshold,
+            random_seed=self.seed,
         )
         est.run()
 
@@ -38,9 +42,13 @@ class TestCTRWfractal:
         assert est.clusters_.shape == (self.grid_size * self.grid_size,)
         assert est.walks_.shape == (0, 0, 0)
 
-    def test_honeycomb(self):
+    @pytest.mark.parametrize("threshold", [None, 0.5, 0.75])
+    def test_honeycomb_no_walks(self, threshold):
         est = CTRWfractal(
-            grid_size=self.grid_size, lattice_type="honeycomb", random_seed=self.seed
+            grid_size=self.grid_size,
+            lattice_type="honeycomb",
+            threshold=threshold,
+            random_seed=self.seed,
         )
         est.run()
 
