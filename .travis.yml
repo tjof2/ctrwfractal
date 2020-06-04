@@ -26,11 +26,13 @@ matrix:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['g++-7', 'libblas-dev', 'liblapack-dev', 'libopenblas-dev']
 
+install:
+  - pip install --upgrade -e .
+
 script:
   - which python
-  - pip install --upgrade -e .
   - pip install --upgrade $PIP_TEST_REQS
-  - pytest --cov=ctrwfractal ctrwfractal/
+  - pytest $PYTEST_ARGS
 
 after_success:
   - if [[ $PYTEST_ARGS == *"--cov=ctrwfractal"* ]]; then

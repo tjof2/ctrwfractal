@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/tjof2/CTRWfractal.svg?branch=master)](https://travis-ci.org/tjof2/CTRWfractal)
+[![DOI](https://zenodo.org/badge/58554121.svg)](https://zenodo.org/badge/latestdoi/58554121)
 
 # CTRWfractal
 
