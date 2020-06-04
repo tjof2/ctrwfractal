@@ -241,6 +241,7 @@ public:
     }
   }
 
+  bool includeWalks;
   arma::Col<int64_t> lattice;
   arma::Mat<T> latticeCoords, analysis;
   arma::Cube<T> walksCoords;
@@ -255,7 +256,6 @@ private:
   uint64_t N, simLength;
   int64_t EMPTY;
   uint8_t neighbourCount;
-  bool includeWalks;
 
   const double sqrt3 = 1.7320508075688772;
   const double sqrt3o2 = 0.8660254037844386;
@@ -818,10 +818,11 @@ uint64_t CTRWwrapper(
   analysis = sim->analysis;
   walks = sim->walksCoords;
 
-  arma::inplace_trans(lattice); // Remember Armadillo is Fortran-contiguous, numpy is C-contiguous
-  arma::inplace_trans(analysis);
-
-  std::cout << walks.slice(0) << std::endl;
+  if (sim->includeWalks) // Remember Armadillo is Fortran-contiguous, numpy is C-contiguous
+  {
+    arma::inplace_trans(lattice);
+    arma::inplace_trans(analysis);
+  }
 
   delete sim;
   return 0;
