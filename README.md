@@ -1,8 +1,8 @@
-[![Build Status](https://travis-ci.org/tjof2/CTRWfractal.svg?branch=master)](https://travis-ci.org/tjof2/CTRWfractal)
-[![Coverage Status](https://coveralls.io/repos/github/tjof2/CTRWfractal/badge.svg?branch=master)](https://coveralls.io/github/tjof2/CTRWfractal?branch=master)
+[![Build Status](https://travis-ci.org/tjof2/ctrwfractal.svg?branch=master)](https://travis-ci.org/tjof2/ctrwfractal)
+[![Coverage Status](https://coveralls.io/repos/github/tjof2/ctrwfractal/badge.svg?branch=master)](https://coveralls.io/github/tjof2/ctrwfractal?branch=master)
 [![DOI](https://zenodo.org/badge/58554121.svg)](https://zenodo.org/badge/latestdoi/58554121)
 
-# CTRWfractal
+# ctrwfractal
 
 **Modelling continuous-time random walks on fractal percolation clusters**
 
@@ -20,8 +20,8 @@ FAQs](http://arma.sourceforge.net/faq.html#dependencies).
 To build the library, unpack the source and `cd` into the unpacked directory, then type `make`:
 
 ```bash
-$ tar -xzf CTRWfractal.tar.gz
-$ cd CTRWfractal
+$ tar -xzf ctrwfractal.tar.gz
+$ cd ctrwfractal
 $ make
 ```
 
@@ -56,4 +56,4 @@ on the percolation cluster.
    Simulate w random walks on this lattice
 ```
 
-Copyright (C) 2016-2020 Tom Furnival. CTRWfractal is released free of charge under the GNU General Public License (GPLv3).
+Copyright (C) 2016-2020 Tom Furnival. ctrwfractal is released free of charge under the GNU General Public License (GPLv3).

@@ -2,20 +2,20 @@
 
   Copyright 2016-2020 Tom Furnival
 
-  This file is part of CTRWfractal.
+  This file is part of ctrwfractal.
 
-  CTRWfractal is free software: you can redistribute it and/or modify
+  ctrwfractal is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
   the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
 
-  CTRWfractal is distributed in the hope that it will be useful,
+  ctrwfractal is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
-  along with CTRWfractal.  If not, see <http://www.gnu.org/licenses/>.
+  along with ctrwfractal.  If not, see <http://www.gnu.org/licenses/>.
 
   Percolation clusters developed from C code by Mark Newman.
   http://www-personal.umich.edu/~mejn/percolation/
@@ -24,8 +24,8 @@
 
 ***************************************************************************/
 
-#ifndef CTRW_HPP
-#define CTRW_HPP
+#ifndef _CTRW_HPP
+#define _CTRW_HPP
 
 #include <cmath>
 #include <cstdlib>
@@ -41,38 +41,55 @@ class CTRWfractal
 public:
   CTRWfractal(
       const uint64_t gridSize,
+      const uint64_t latticeType,
+      const double threshold,
+      const uint64_t walkType,
       const uint64_t nWalks,
       const uint64_t nSteps,
-      const double threshold,
       const double beta,
       const double tau0,
       const double noise,
-      const uint8_t latticeType,
-      const uint8_t walkType,
       const int64_t randomSeed,
       const int64_t nJobs) : gridSize(gridSize),
+                             latticeType(latticeType),
+                             threshold(threshold),
+                             walkType(walkType),
                              nWalks(nWalks),
                              nSteps(nSteps),
-                             threshold(threshold),
                              beta(beta),
                              tau0(tau0),
                              noise(noise),
-                             latticeType(latticeType),
-                             walkType(walkType),
                              randomSeed(randomSeed),
                              nJobs(nJobs)
   {
-    simLength = (tau0 < 1.0) ? static_cast<uint64_t>(nSteps / tau0) : nSteps;
+    if ((nWalks > 0) && (nSteps > 0)) // Set array sizes
+    {
+      simLength = (tau0 < 1.0) ? static_cast<uint64_t>(nSteps / tau0) : nSteps;
 
-    walks.set_size(simLength); // Set array sizes
-    ctrwTimes.set_size(simLength);
-    trueWalks.set_size(nSteps);
-    eaMSD.set_size(nSteps);
-    eaMSDall.set_size(nSteps - 1, nWalks);
-    taMSD.set_size(nSteps - 1, nWalks);
-    eataMSD.set_size(nSteps - 1);
-    eataMSDall.set_size(nSteps - 1, nWalks);
-    ergodicity.set_size(nSteps - 1);
+      walks.set_size(simLength);
+      ctrwTimes.set_size(simLength);
+      trueWalks.set_size(nSteps);
+      eaMSD.set_size(nSteps);
+      eaMSDall.set_size(nSteps - 1, nWalks);
+      taMSD.set_size(nSteps - 1, nWalks);
+      eataMSD.set_size(nSteps - 1);
+      eataMSDall.set_size(nSteps - 1, nWalks);
+      ergodicity.set_size(nSteps - 1);
+    }
+    else
+    {
+      simLength = 0;
+
+      walks.set_size(0);
+      ctrwTimes.set_size(0);
+      trueWalks.set_size(0);
+      eaMSD.set_size(0);
+      eaMSDall.set_size(0, 0);
+      taMSD.set_size(0, 0);
+      eataMSD.set_size(0);
+      eataMSDall.set_size(0, 0);
+      ergodicity.set_size(0);
+    }
 
     if (randomSeed < 0) // Seed with external entropy from std::random_device
     {
@@ -84,7 +101,24 @@ public:
     }
   };
 
-  ~CTRWfractal(){};
+  ~CTRWfractal()
+  {
+    walks.reset();
+    ctrwTimes.reset();
+    trueWalks.reset();
+    eaMSD.reset();
+    eaMSDall.reset();
+    taMSD.reset();
+    eataMSD.reset();
+    eataMSDall.reset();
+    ergodicity.reset();
+    nn.reset();
+    lattice.reset();
+    occupation.reset();
+    latticeCoords.reset();
+    analysis.reset();
+    walksCoords.reset();
+  };
 
   void Initialize()
   {
@@ -130,8 +164,17 @@ public:
     occupation.set_size(N);
 
     latticeCoords.set_size(2, N); // These are exported
-    analysis.set_size(nSteps - 1, nWalks + 3);
-    walksCoords.set_size(2, nSteps, nWalks);
+
+    if ((nWalks > 0) && (nSteps > 0))
+    {
+      analysis.set_size(nSteps - 1, nWalks + 3);
+      walksCoords.set_size(2, nSteps, nWalks);
+    }
+    else
+    {
+      analysis.set_size(0, 0);
+      walksCoords.set_size(0, 0, 0);
+    }
   }
 
   void Run()
@@ -202,9 +245,10 @@ public:
   arma::Cube<T> walksCoords;
 
 private:
-  uint64_t gridSize, nWalks, nSteps;
-  double threshold, beta, tau0, noise;
-  uint8_t latticeType, walkType;
+  uint64_t gridSize, latticeType;
+  double threshold;
+  uint64_t walkType, nWalks, nSteps;
+  double beta, tau0, noise;
   int64_t randomSeed, nJobs;
 
   uint64_t N, simLength;
@@ -306,8 +350,8 @@ private:
   void PossibleStartPoints()
   {
     // Set up selection of random start point
-    //  - walkType == 1 : on largest cluster, or
-    //  - walkType == 0 : on ALL clusters
+    //  - walkType = 1 : on largest cluster, or
+    //  - walkType = 0 : on ALL clusters
     if (walkType == 1)
     {
       int64_t latticeMin = lattice.elem(find(lattice > EMPTY)).min();
@@ -745,27 +789,27 @@ uint64_t CTRWwrapper(
     arma::Mat<T> &analysis,
     arma::Cube<T> &walks,
     const uint64_t gridSize,
+    const uint64_t latticeType,
+    const double threshold,
+    const uint64_t walkType,
     const uint64_t nWalks,
     const uint64_t nSteps,
-    const double threshold,
     const double beta,
     const double tau0,
     const double noise,
-    const uint8_t latticeType,
-    const uint8_t walkType,
     const int64_t randomSeed,
     const int64_t nJobs)
 {
   CTRWfractal<T> *sim = new CTRWfractal<T>(
       gridSize,
+      latticeType,
+      threshold,
+      walkType,
       nWalks,
       nSteps,
-      threshold,
       beta,
       tau0,
       noise,
-      latticeType,
-      walkType,
       randomSeed,
       nJobs);
 
@@ -777,6 +821,7 @@ uint64_t CTRWwrapper(
   analysis = sim->analysis;
   walks = sim->walksCoords;
 
+  //delete sim;
   return 0;
 };
 

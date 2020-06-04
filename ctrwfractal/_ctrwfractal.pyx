@@ -1,19 +1,19 @@
 # Copyright 2016-2020 Tom Furnival
 #
-# This file is part of CTRWfractal.
+# This file is part of ctrwfractal.
 #
-# CTRWfractal is free software: you can redistribute it and/or modify
+# ctrwfractal is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# CTRWfractal is distributed in the hope that it will be useful,
+# ctrwfractal is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with CTRWfractal.  If not, see <http://www.gnu.org/licenses/>.
+# along with ctrwfractal.  If not, see <http://www.gnu.org/licenses/>.
 
 # cython: language_level=3
 # distutils: language = c++
@@ -22,27 +22,28 @@ import numpy as np
 cimport numpy as np
 cimport cython
 from libcpp cimport bool
-from libc.stdint cimport uint8_t, uint64_t, int64_t
+from libc.stdint cimport uint64_t, int64_t
 
 from .arma cimport Col, Mat, Cube, numpy_from_mat_d, numpy_from_cube_d, numpy_from_col_i
 
 
 cdef extern from "_ctrw.hpp":
     cdef uint64_t c_ctrw "CTRWwrapper"[T] (Mat[T] &, Col[int64_t] &, Mat[T] &, Cube[T] &,
+                                           uint64_t, uint64_t, double,
                                            uint64_t, uint64_t, uint64_t,
-                                           double, double, double, double,
-                                           uint8_t, uint8_t, int64_t, int64_t)
+                                           double, double, double,
+                                           int64_t, int64_t)
 
 
-def ctrw_fractal_double(uint64_t grid_size = 128,
-                        uint64_t n_walks = 0,
-                        uint64_t n_steps = 1,
+def ctrw_fractal_double(uint64_t grid_size = 32,
+                        uint64_t lattice_type = 0,
                         double threshold = -1.0,
+                        uint64_t walk_type = 0,
+                        uint64_t n_walks = 0,
+                        uint64_t n_steps = 0,
                         double beta = 0.0,
                         double tau0 = 1.0,
                         double noise = 0.0,
-                        uint8_t lattice_type = 0,
-                        uint8_t walk_type = 0,
                         int64_t random_seed = -1,
                         int64_t n_jobs = -1):
 
@@ -68,14 +69,14 @@ def ctrw_fractal_double(uint64_t grid_size = 128,
                             _analysis,
                             _walks,
                             grid_size,
+                            lattice_type,
+                            threshold,
+                            walk_type,
                             n_walks,
                             n_steps,
-                            threshold,
                             beta,
                             tau0,
                             noise,
-                            lattice_type,
-                            walk_type,
                             random_seed,
                             n_jobs)
 
