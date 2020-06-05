@@ -18,6 +18,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.collections import PatchCollection
+from matplotlib.patches import Circle
 
 from ._ctrwfractal import ctrw_fractal
 
@@ -116,6 +118,8 @@ class CTRWfractal:
         self.noise = noise
         self.random_seed = random_seed
         self.n_jobs = n_jobs
+
+        self._has_run = False
 
     def _analysis_to_df(self, analysis):
         columns = ["EnsembleMSD", "EnsembleTimeAveragedMSD", "ErgodicityBreaking"]
@@ -222,4 +226,14 @@ class CTRWfractal:
             self.walks_ = None
             self.analysis_ = None
 
+        self._has_run = True
+
         return self
+
+    def plot_lattice(self, ax=None):
+        if not self._has_run:
+            self.run()
+
+    def plot_walks(self, ax=None):
+        if not self._has_run:
+            self.run()
