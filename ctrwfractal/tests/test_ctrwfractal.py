@@ -57,3 +57,21 @@ class TestCTRWfractal:
 
         assert est.clusters_.shape == (4 * self.grid_size * self.grid_size,)
         assert est.walks_.shape == (0, 0, 0)
+
+    def test_lattice_type_error(self):
+        est = CTRWfractal(grid_size=self.grid_size, lattice_type=None)
+        with pytest.raises(ValueError, match="Invalid lattice type"):
+            est.run()
+
+        est = CTRWfractal(grid_size=self.grid_size, lattice_type="triangle")
+        with pytest.raises(ValueError, match="Invalid lattice type"):
+            est.run()
+
+    def test_walk_type_error(self):
+        est = CTRWfractal(grid_size=self.grid_size, walk_type=None)
+        with pytest.raises(ValueError, match="Invalid walk type"):
+            est.run()
+
+        est = CTRWfractal(grid_size=self.grid_size, walk_type="smallest")
+        with pytest.raises(ValueError, match="Invalid walk type"):
+            est.run()
