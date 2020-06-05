@@ -126,8 +126,8 @@ cdef np.ndarray[np.double_t, ndim=2] numpy_from_mat_d(Mat[double] &m) except +:
 cdef np.ndarray[np.double_t, ndim=3] numpy_from_cube_d(Cube[double] &m) except +:
     cdef np.npy_intp dims[3]
     dims[0] = <np.npy_intp> m.n_slices
-    dims[1] = <np.npy_intp> m.n_cols
-    dims[2] = <np.npy_intp> m.n_rows
+    dims[1] = <np.npy_intp> m.n_rows
+    dims[2] = <np.npy_intp> m.n_cols
     cdef np.ndarray[np.double_t, ndim=3] arr = np.PyArray_SimpleNewFromData(3, &dims[0], np.NPY_DOUBLE, GetMemory(m))
 
     if GetMemState[Cube[double]](m) == 0:
