@@ -463,6 +463,7 @@ private:
 
       uint64_t counter = 0;
       boundaryTrue.zeros();
+
       for (size_t j = 0; j < nSteps; j++) // Subordinate fractal walk with CTRW
       {
         if (j > ctrwTimes(counter))
@@ -581,10 +582,8 @@ private:
   {
     int64_t j, t_;
 
-    for (size_t i = 0; i < N; i++)
-    {
-      occupation(i) = i;
-    }
+    occupation = arma::regspace<arma::ivec>(0, N - 1);
+
     for (size_t i = 0; i < N; i++)
     {
       j = i + (N - i) * permConstant * UniformDistribution(RNG);
@@ -594,7 +593,7 @@ private:
     }
   }
 
-  int64_t FindRoot(int64_t i)
+  int64_t FindRoot(const int64_t i)
   {
     if (lattice(i) < 0)
     {
@@ -609,10 +608,8 @@ private:
     int64_t r1, r2;
     int64_t big = 0;
 
-    for (size_t i = 0; i < N; i++)
-    {
-      lattice(i) = EMPTY;
-    }
+    lattice.fill(EMPTY);
+
     for (uint64_t i = 0; i < (threshold * N) - 1; i++)
     {
       r1 = s1 = occupation[i];
