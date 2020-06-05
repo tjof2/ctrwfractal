@@ -85,7 +85,9 @@ void parallel(Function const &func,
         if (dimLast - dimFirst <= totalCores) // case of small job numbers
         {
             for (auto index = dimFirst; index != dimLast; ++index)
+            {
                 threads.emplace_back(std::thread{[&func, index]() { func(index); }});
+            }
             for (auto &th : threads)
             {
                 th.join();
@@ -139,16 +141,17 @@ void SetMemStateCube(T &t, int state)
 template <typename T>
 size_t GetMemState(T &t)
 {
-    if (t.mem && t.n_elem <= arma::arma_config::mat_prealloc)
+    if ((t.mem) && (t.n_elem <= arma::arma_config::mat_prealloc))
+    {
         return 0;
-
-    return (size_t)t.mem_state;
+    }
+    return static_cast<size_t>(t.mem_state);
 }
 
 template <typename T>
 inline typename T::elem_type *GetMemory(T &m)
 {
-    if (m.mem && m.n_elem <= arma::arma_config::mat_prealloc)
+    if ((m.mem) && (m.n_elem <= arma::arma_config::mat_prealloc))
     {
         typename T::elem_type *mem = arma::memory::acquire<typename T::elem_type>(m.n_elem);
         arma::arrayops::copy(mem, m.memptr(), m.n_elem);
