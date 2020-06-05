@@ -16,6 +16,7 @@
 # along with ctrwfractal.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from ctrwfractal import CTRWfractal
@@ -59,6 +60,58 @@ class TestNoWalks:
         assert est.clusters_.shape == (4 * self.grid_size * self.grid_size,)
         assert est.walks_ is None
         assert est.analysis_ is None
+
+
+class TestWithWalks:
+    def setup_method(self, method):
+        self.seed = 123
+        self.grid_size = 32
+
+    @pytest.mark.parametrize("threshold", [None, 0.5, 0.75])
+    @pytest.mark.parametrize("walk_type", ["all", "largest"])
+    @pytest.mark.parametrize("n_walks", [1, 2])
+    @pytest.mark.parametrize("n_steps", [10, 25])
+    def test_square(self, threshold, walk_type, n_walks, n_steps):
+        est = CTRWfractal(
+            grid_size=self.grid_size,
+            lattice_type="square",
+            threshold=threshold,
+            walk_type=walk_type,
+            n_walks=n_walks,
+            n_steps=n_steps,
+            random_seed=self.seed,
+        )
+        est.run()
+
+        for attr in ["lattice_", "clusters_", "analysis_", "walks_"]:
+            assert hasattr(est, attr)
+
+        assert est.clusters_.shape == (self.grid_size * self.grid_size,)
+        assert isinstance(est.walks_, np.ndarray)
+        assert isinstance(est.analysis_, pd.DataFrame)
+
+    # @pytest.mark.parametrize("threshold", [None, 0.5, 0.75])
+    # @pytest.mark.parametrize("walk_type", ["all", "largest"])
+    # @pytest.mark.parametrize("n_walks", [1, 2])
+    # @pytest.mark.parametrize("n_steps", [10, 25])
+    # def test_honeycomb(self, threshold, walk_type, n_walks, n_steps):
+    #     est = CTRWfractal(
+    #         grid_size=self.grid_size,
+    #         lattice_type="honeycomb",
+    #         threshold=threshold,
+    #         walk_type=walk_type,
+    #         n_walks=n_walks,
+    #         n_steps=n_steps,
+    #         random_seed=self.seed,
+    #     )
+    #     est.run()
+
+    #     for attr in ["lattice_", "clusters_", "analysis_", "walks_"]:
+    #         assert hasattr(est, attr)
+
+    #     assert est.clusters_.shape == (4 * self.grid_size * self.grid_size,)
+    #     assert isinstance(est.walks_, np.ndarray)
+    #     assert isinstance(est.analysis_, pd.DataFrame)
 
 
 class TestErrors:

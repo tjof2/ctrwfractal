@@ -25,32 +25,46 @@ from ._ctrwfractal import ctrw_fractal
 class CTRWfractal:
     """Continuous-time random walks on 2D percolation clusters.
 
+    The percolation clusters are generated using the periodic algorithm
+    described in [New2001]_.
+
     Parameters
     ----------
     grid_size : int, default=32
-
+        Dimensions of the 2D lattice. The total number of sites in the
+        lattice will depend on the ``lattice_type``; for example, a
+        square lattice will have ``grid_size ** 2`` sites in total.
     lattice_type : str {"square", "honeycomb"}, default="square"
-
+        - If "square", then a 2D square lattice is generated.
+        - If "honeycomb", then a 2D honeycomb (or graphene) lattice
+          is generated.
     threshold : None or float, default=None
-
+        The fraction of occupied sites on the lattice. If None,
+        then the critical percolation threshold for the given
+        ``lattice_type`` is used.
     walk_type : str {"all", "largest"}, default="all"
-
-    n_walks : int, default=0
-
-    n_steps : int, default=0
-
+        - If "all", then the random walks can occur on any of the
+          clusters on the 2D lattice.
+        - If "largest", then the random walks will only occur on
+          the largest cluster on the 2D lattice.
+    n_walks : None or int, default=None
+        Simulate ``n_walks`` random walks on the 2D lattice.
+    n_steps : None or int, default=None
+        Length of random walks on the 2D lattice.
     beta : None or float, default=None
 
     tau0 : None or float, default=None
 
     noise : None or float, default=None
-
+        If not None, add zero-mean Gaussian noise to the random walks
+        with standard deviation = ``noise``.
     random_seed : None or int, default=None
 
     n_jobs : None or int, default=None
-        The number of parallel threads to use. The random walk analysis is performed
-        in parallel over ``n_walks``. None means single-threaded operation. -1 means
-        using all available threads dependent on the hardware.
+        The number of threads to use for the random walk analysis, which
+        is performed in parallel over ``n_walks``. None means using a
+        single thread, while -1 means using all threads dependent on the
+        available hardware.
 
     Attributes
     ----------
@@ -65,8 +79,15 @@ class CTRWfractal:
 
     Notes
     -----
-    See http://dx.doi.org/10.1088/1751-8113/47/13/135001 for further details on
-    critical thresholds for percolation clusters.
+    See [Jac2014]_ for details on critical thresholds for percolation clusters.
+
+    References
+    ----------
+    .. [New2001] M. E. J. Newman and R. M. Ziff, "A fast Monte Carlo algorithm
+                 for site or bond percolation", Phys. Rev. E 64, 016706 (2001).
+    .. [Jac2014] J. L. Jacobsen, "High-precision percolation thresholds and
+                 Potts-model critical manifolds from graph polynomials",
+                 J. Phys. A 47(13), 135001, (2014).
 
     """
 
@@ -76,8 +97,8 @@ class CTRWfractal:
         lattice_type="square",
         threshold=None,
         walk_type="all",
-        n_walks=0,
-        n_steps=0,
+        n_walks=None,
+        n_steps=None,
         beta=None,
         tau0=None,
         noise=None,
@@ -98,7 +119,7 @@ class CTRWfractal:
 
     def _analysis_to_df(self, analysis):
         columns = ["EnsembleMSD", "EnsembleTimeAveragedMSD", "ErgodicityBreaking"]
-        columns.extend([f"TimeAveragedMSD_Walk{i}" for i in range(self.n_walks)])
+        columns.extend([f"TimeAveragedMSD_Walk{i}" for i in range(self.n_walks_)])
 
         return pd.DataFrame(analysis, columns=columns)
 
@@ -130,6 +151,8 @@ class CTRWfractal:
         )
 
         # C++ uses numerical values instead of None for defaults
+        self.n_walks_ = 0 if self.n_walks is None else self.n_walks
+        self.n_steps_ = 0 if self.n_steps is None else self.n_steps
         self.beta_ = 0.0 if self.beta is None else self.beta
         self.tau0_ = 1.0 if self.tau0 is None else self.tau0
         self.noise_ = 0.0 if self.noise is None else self.noise
@@ -177,8 +200,8 @@ class CTRWfractal:
         # Now we can safely call the C++ function
         res = ctrw_fractal(
             grid_size=self.grid_size,
-            n_walks=self.n_walks,
-            n_steps=self.n_steps,
+            n_walks=self.n_walks_,
+            n_steps=self.n_steps_,
             threshold=self.threshold_,
             beta=self.beta_,
             tau0=self.tau0_,
@@ -192,7 +215,7 @@ class CTRWfractal:
         self.clusters_ = res[0]
         self.lattice_ = res[1]
 
-        if self.n_walks > 0 and self.n_steps > 0:
+        if self.n_walks_ > 0 and self.n_steps_ > 0:
             self.walks_ = res[2]
             self.analysis_ = self._analysis_to_df(res[3])
         else:
