@@ -44,15 +44,13 @@ class TestSquare:
         assert est.walks_ is None
         assert est.analysis_ is None
 
-    @pytest.mark.parametrize("threshold", [None, 0.55, 0.65])
     @pytest.mark.parametrize("walk_type", ["all", "largest"])
     @pytest.mark.parametrize("n_walks", [1, 2])
     @pytest.mark.parametrize("n_steps", [10, 25])
-    def test_square_with_walks(self, threshold, walk_type, n_walks, n_steps):
+    def test_square_with_walks(self, walk_type, n_walks, n_steps):
         est = CTRWfractal(
             grid_size=self.grid_size,
             lattice_type="square",
-            threshold=threshold,
             walk_type=walk_type,
             n_walks=n_walks,
             n_steps=n_steps,
@@ -90,15 +88,13 @@ class TestHoneycomb:
         assert est.walks_ is None
         assert est.analysis_ is None
 
-    @pytest.mark.parametrize("threshold", [None, 0.65, 0.75])
     @pytest.mark.parametrize("walk_type", ["all", "largest"])
     @pytest.mark.parametrize("n_walks", [1, 2])
     @pytest.mark.parametrize("n_steps", [10, 25])
-    def test_honeycomb_with_walks(self, threshold, walk_type, n_walks, n_steps):
+    def test_honeycomb_with_walks(self, walk_type, n_walks, n_steps):
         est = CTRWfractal(
             grid_size=self.grid_size,
             lattice_type="honeycomb",
-            threshold=threshold,
             walk_type=walk_type,
             n_walks=n_walks,
             n_steps=n_steps,
