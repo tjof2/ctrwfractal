@@ -21,13 +21,13 @@ import pytest
 from ctrwfractal import CTRWfractal
 
 
-class TestCTRWfractal:
+class TestNoWalks:
     def setup_method(self, method):
         self.seed = 123
         self.grid_size = 32
 
     @pytest.mark.parametrize("threshold", [None, 0.5, 0.75])
-    def test_square_no_walks(self, threshold):
+    def test_square(self, threshold):
         est = CTRWfractal(
             grid_size=self.grid_size,
             lattice_type="square",
@@ -40,10 +40,11 @@ class TestCTRWfractal:
             assert hasattr(est, attr)
 
         assert est.clusters_.shape == (self.grid_size * self.grid_size,)
-        assert est.walks_.shape == (0, 0, 0)
+        assert est.walks_ is None
+        assert est.analysis_ is None
 
     @pytest.mark.parametrize("threshold", [None, 0.5, 0.75])
-    def test_honeycomb_no_walks(self, threshold):
+    def test_honeycomb(self, threshold):
         est = CTRWfractal(
             grid_size=self.grid_size,
             lattice_type="honeycomb",
@@ -56,22 +57,34 @@ class TestCTRWfractal:
             assert hasattr(est, attr)
 
         assert est.clusters_.shape == (4 * self.grid_size * self.grid_size,)
-        assert est.walks_.shape == (0, 0, 0)
+        assert est.walks_ is None
+        assert est.analysis_ is None
+
+
+class TestErrors:
+    def setup_method(self, method):
+        self.seed = 123
+        self.grid_size = 32
 
     def test_lattice_type_error(self):
         est = CTRWfractal(grid_size=self.grid_size, lattice_type=None)
-        with pytest.raises(ValueError, match="Invalid lattice type"):
+        with pytest.raises(ValueError, match="Invalid lattice_type parameter"):
             est.run()
 
         est = CTRWfractal(grid_size=self.grid_size, lattice_type="triangle")
-        with pytest.raises(ValueError, match="Invalid lattice type"):
+        with pytest.raises(ValueError, match="Invalid lattice_type parameter"):
             est.run()
 
     def test_walk_type_error(self):
         est = CTRWfractal(grid_size=self.grid_size, walk_type=None)
-        with pytest.raises(ValueError, match="Invalid walk type"):
+        with pytest.raises(ValueError, match="Invalid walk_type parameter"):
             est.run()
 
         est = CTRWfractal(grid_size=self.grid_size, walk_type="smallest")
-        with pytest.raises(ValueError, match="Invalid walk type"):
+        with pytest.raises(ValueError, match="Invalid walk_type parameter"):
+            est.run()
+
+    def test_threshold_error(self):
+        est = CTRWfractal(grid_size=self.grid_size, threshold=-0.2)
+        with pytest.raises(ValueError, match="Invalid threshold parameter"):
             est.run()

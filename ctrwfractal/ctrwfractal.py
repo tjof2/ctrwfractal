@@ -23,19 +23,56 @@ from ._ctrwfractal import ctrw_fractal
 
 
 class CTRWfractal:
-    """
+    """Continuous-time random walks on 2D percolation clusters.
 
     Parameters
     ----------
+    grid_size : int, default=32
+
+    lattice_type : str {"square", "honeycomb"}, default="square"
+
+    threshold : None or float, default=None
+
+    walk_type : str {"all", "largest"}, default="all"
+
+    n_walks : int, default=0
+
+    n_steps : int, default=0
+
+    beta : None or float, default=None
+
+    tau0 : None or float, default=None
+
+    noise : None or float, default=None
+
+    random_seed : None or int, default=None
+
+    n_jobs : None or int, default=None
+        The number of parallel threads to use. The random walk analysis is performed
+        in parallel over ``n_walks``. None means single-threaded operation. -1 means
+        using all available threads dependent on the hardware.
 
     Attributes
     ----------
+    clusters_ : array-like, shape (n_sites,)
+
+    lattice_ : array-like, shape (2, n_sites)
+
+    walks_ : None or array-like, shape (n_walks, n_steps, 2)
+        If ``n_walks``
+    analysis_ : None or pandas.DataFrame
+        If ``n_walks``
+
+    Notes
+    -----
+    See http://dx.doi.org/10.1088/1751-8113/47/13/135001 for further details on
+    critical thresholds for percolation clusters.
 
     """
 
     def __init__(
         self,
-        grid_size=64,
+        grid_size=32,
         lattice_type="square",
         threshold=None,
         walk_type="all",
@@ -45,7 +82,7 @@ class CTRWfractal:
         tau0=None,
         noise=None,
         random_seed=None,
-        n_jobs=-1,
+        n_jobs=None,
     ):
         self.grid_size = grid_size
         self.lattice_type = lattice_type
@@ -59,6 +96,12 @@ class CTRWfractal:
         self.random_seed = random_seed
         self.n_jobs = n_jobs
 
+    def _analysis_to_df(self, analysis):
+        columns = ["EnsembleMSD", "EnsembleTimeAveragedMSD", "ErgodicityBreaking"]
+        columns.extend([f"TimeAveragedMSD_Walk{i}" for i in range(self.n_walks)])
+
+        return pd.DataFrame(analysis, columns=columns)
+
     def run(self):
         """
 
@@ -68,11 +111,8 @@ class CTRWfractal:
 
         Returns
         -------
-
-        Notes
-        -----
-        See http://dx.doi.org/10.1088/1751-8113/47/13/135001
-        for details on thresholds for percolation
+        self : object
+            Returns the instance itself.
 
         """
         lattice_types = {"square": 0, "honeycomb": 1}
@@ -83,7 +123,7 @@ class CTRWfractal:
 
         if self.lattice_type_ is None:
             raise ValueError(
-                f"Invalid lattice type: got '{self.lattice_type}' "
+                f"Invalid lattice_type parameter: got '{self.lattice_type}' "
                 f"instead of one of {lattice_types.keys()}"
             )
 
@@ -91,7 +131,7 @@ class CTRWfractal:
 
         if self.walk_type_ is None:
             raise ValueError(
-                f"Invalid walk type: got '{self.walk_type}' "
+                f"Invalid walk_type parameter: got '{self.walk_type}' "
                 f"instead of one of {walk_types.keys()}"
             )
 
@@ -103,11 +143,18 @@ class CTRWfractal:
             else self.threshold
         )
 
-        # C++ uses numerical values instead of None
+        if self.threshold_ < 0.0 or self.threshold_ > 1.0:
+            raise ValueError(
+                f"Invalid threshold parameter: got '{self.threshold}' "
+                f"instead of a float between 0.0 and 1.0"
+            )
+
+        # C++ uses numerical values instead of None for defaults
         self.beta_ = 0.0 if self.beta is None else self.beta
         self.tau0_ = 1.0 if self.tau0 is None else self.tau0
         self.noise_ = 0.0 if self.noise is None else self.noise
         self.random_seed_ = -1 if self.random_seed is None else self.random_seed
+        self.n_jobs_ = 0 if self.n_jobs is None else self.n_jobs
 
         res = ctrw_fractal(
             grid_size=self.grid_size,
@@ -120,12 +167,17 @@ class CTRWfractal:
             lattice_type=self.lattice_type_,
             walk_type=self.walk_type_,
             random_seed=self.random_seed_,
-            n_jobs=self.n_jobs,
+            n_jobs=self.n_jobs_,
         )
 
         self.clusters_ = res[0]
         self.lattice_ = res[1]
-        self.walks_ = res[2]
-        self.analysis_ = res[3]
+
+        if self.n_walks > 0 and self.n_steps > 0:
+            self.walks_ = res[2]
+            self.analysis_ = self._analysis_to_df(res[3])
+        else:
+            self.walks_ = None
+            self.analysis_ = None
 
         return self
