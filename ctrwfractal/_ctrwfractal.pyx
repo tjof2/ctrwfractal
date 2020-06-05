@@ -99,7 +99,7 @@ cdef extern from "utils/utils.hpp":
     int64_t* GetMemory(Cube[int64_t]& m)
 
 
-cdef np.ndarray[int64_t, ndim=1] numpy_from_col_i(Col[int64_t] &m) except +:
+cdef np.ndarray[np.int64_t, ndim=1] numpy_from_col_i(Col[int64_t] &m) except +:
     cdef np.npy_intp dim = <np.npy_intp> m.n_elem
     cdef np.ndarray[np.int64_t, ndim=1] arr = np.PyArray_SimpleNewFromData(1, &dim, np.NPY_INT64, GetMemory(m))
 
@@ -145,36 +145,36 @@ cdef extern from "_ctrw.hpp":
                                            int64_t, int64_t)
 
 
-def ctrw_fractal_double(uint64_t grid_size = 32,
-                        uint64_t lattice_type = 0,
-                        double threshold = 0.0,
-                        uint64_t walk_type = 0,
-                        uint64_t n_walks = 0,
-                        uint64_t n_steps = 0,
-                        double beta = 0.0,
-                        double tau0 = 1.0,
-                        double noise = 0.0,
-                        int64_t random_seed = -1,
-                        int64_t n_jobs = -1):
+def ctrw_fractal(uint64_t grid_size = 32,
+                 uint64_t lattice_type = 0,
+                 double threshold = 0.0,
+                 uint64_t walk_type = 0,
+                 uint64_t n_walks = 0,
+                 uint64_t n_steps = 0,
+                 double beta = 0.0,
+                 double tau0 = 1.0,
+                 double noise = 0.0,
+                 int64_t random_seed = -1,
+                 int64_t n_jobs = -1):
 
-    cdef np.ndarray[int64_t, ndim=1] clusters
-    cdef np.ndarray[double, ndim=2] lattice
-    cdef np.ndarray[double, ndim=2] analysis
-    cdef np.ndarray[double, ndim=3] walks
+    cdef uint64_t result
+
+    cdef np.ndarray[np.int64_t, ndim=1] clusters
+    cdef np.ndarray[np.double_t, ndim=2] lattice
+    cdef np.ndarray[np.double_t, ndim=2] analysis
+    cdef np.ndarray[np.double_t, ndim=3] walks
 
     cdef Col[int64_t] _clusters
     cdef Mat[double] _lattice
     cdef Mat[double] _analysis
     cdef Cube[double] _walks
 
-    cdef uint64_t result
-
     _clusters = Col[int64_t]()
     _lattice = Mat[double]()
     _analysis = Mat[double]()
     _walks = Cube[double]()
 
-    result = c_ctrw[double]( _clusters,
+    result = c_ctrw[double](_clusters,
                             _lattice,
                             _analysis,
                             _walks,

@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from ._ctrwfractal import ctrw_fractal_double
+from ._ctrwfractal import ctrw_fractal
 
 
 class CTRWfractal:
@@ -41,8 +41,8 @@ class CTRWfractal:
         walk_type="all",
         n_walks=0,
         n_steps=0,
-        beta=1.0,
-        tau0=1.0,
+        beta=None,
+        tau0=None,
         noise=None,
         random_seed=None,
         n_jobs=-1,
@@ -103,17 +103,19 @@ class CTRWfractal:
             else self.threshold
         )
 
-        # C++ uses noise=0.0 and seed=-1 instead of None
+        # C++ uses numerical values instead of None
+        self.beta_ = 0.0 if self.beta is None else self.beta
+        self.tau0_ = 1.0 if self.tau0 is None else self.tau0
         self.noise_ = 0.0 if self.noise is None else self.noise
         self.random_seed_ = -1 if self.random_seed is None else self.random_seed
 
-        res = ctrw_fractal_double(
+        res = ctrw_fractal(
             grid_size=self.grid_size,
             n_walks=self.n_walks,
             n_steps=self.n_steps,
             threshold=self.threshold_,
-            beta=self.beta,
-            tau0=self.tau0,
+            beta=self.beta_,
+            tau0=self.tau0_,
             noise=self.noise_,
             lattice_type=self.lattice_type_,
             walk_type=self.walk_type_,
