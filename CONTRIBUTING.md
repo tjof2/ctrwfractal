@@ -9,4 +9,4 @@ Lastly, you can contribute by helping to spread the word about ctrwfractal: refe
 
 If you use this code in a publication, please cite our work:
 
-> T. Furnival, R. K.Leary, E. C. Tyo, S. Vajda, Q. M.Ramasse, J. M. Thomas, P. D.Bristowe and P. A. Midgley, "Anomalous diffusion of single metal atoms on a graphene oxide support", *Chem. Phys. Lett.*, vol. 683, pp. 370–374, 2017. DOI:[10.1016/j.cplett.2017.04.07](https://dx.doi.org/10.1016/j.cplett.2017.04.071)
+> T. Furnival, R. K. Leary, E. C. Tyo, S. Vajda, Q. M. Ramasse, J. M. Thomas, P. D. Bristowe and P. A. Midgley, "Anomalous diffusion of single metal atoms on a graphene oxide support", *Chem. Phys. Lett.*, vol. 683, pp. 370–374, 2017. DOI:[10.1016/j.cplett.2017.04.07](https://dx.doi.org/10.1016/j.cplett.2017.04.071)
