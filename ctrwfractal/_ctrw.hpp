@@ -257,31 +257,34 @@ public:
     {
       double xx, yy;
       uint64_t count = 0;
-      uint64_t currentCol = 0;
+      uint64_t currentCol, xOffset, yOffset;
 
       for (size_t i = 0; i < 4 * gridSize; i++)
       {
-        for (int64_t j = static_cast<int64_t>(gridSize - 1); j >= 0; j--)
+        for (size_t j = 0; j < gridSize; j++)
         {
+          yOffset = (gridSize - j - 1); // Count from top to bottom
+          xOffset = i / 4;              // divmod - remainder for free
           currentCol = i % 4;
+
           switch (currentCol)
           {
           case 0:
           default:
-            xx = 0.25 * i * 3;
-            yy = j * sqrt3 + sqrt3o2;
+            xx = xOffset * 3;
+            yy = yOffset * sqrt3 + sqrt3o2;
             break;
           case 1:
-            xx = 0.25 * i * 3 + 0.5;
-            yy = j * sqrt3;
+            xx = xOffset * 3 + 0.5;
+            yy = yOffset * sqrt3;
             break;
           case 2:
-            xx = 0.25 * i * 3 + 1.5;
-            yy = j * sqrt3;
+            xx = xOffset * 3 + 1.5;
+            yy = yOffset * sqrt3;
             break;
           case 3:
-            xx = 0.25 * i * 3 + 2.0;
-            yy = j * sqrt3 + sqrt3o2;
+            xx = xOffset * 3 + 2.0;
+            yy = yOffset * sqrt3 + sqrt3o2;
             break;
           }
           latticeCoords(0, count) = xx;
