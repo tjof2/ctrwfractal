@@ -88,3 +88,18 @@ class TestErrors:
         est = CTRWfractal(grid_size=self.grid_size, threshold=-0.2)
         with pytest.raises(ValueError, match="Invalid threshold parameter"):
             est.run()
+
+    def test_beta_error(self):
+        est = CTRWfractal(grid_size=self.grid_size, beta=-0.2)
+        with pytest.raises(ValueError, match="Invalid beta parameter"):
+            est.run()
+
+    def test_tau0_error(self):
+        est = CTRWfractal(grid_size=self.grid_size, tau0=-0.2)
+        with pytest.raises(ValueError, match="Invalid tau0 parameter"):
+            est.run()
+
+    def test_noise_error(self):
+        est = CTRWfractal(grid_size=self.grid_size, noise=-0.2)
+        with pytest.raises(ValueError, match="Invalid noise parameter"):
+            est.run()

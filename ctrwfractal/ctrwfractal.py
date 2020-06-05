@@ -120,34 +120,14 @@ class CTRWfractal:
         walk_types = {"all": 0, "largest": 1}
 
         self.lattice_type_ = lattice_types.get(self.lattice_type, None)
-
-        if self.lattice_type_ is None:
-            raise ValueError(
-                f"Invalid lattice_type parameter: got '{self.lattice_type}' "
-                f"instead of one of {lattice_types.keys()}"
-            )
-
         self.walk_type_ = walk_types.get(self.walk_type, None)
 
-        if self.walk_type_ is None:
-            raise ValueError(
-                f"Invalid walk_type parameter: got '{self.walk_type}' "
-                f"instead of one of {walk_types.keys()}"
-            )
-
         # If no threshold given, use the critical values
-        # for the given lattice type
         self.threshold_ = (
             lattice_thresholds.get(self.lattice_type, 0.0)
             if self.threshold is None
             else self.threshold
         )
-
-        if self.threshold_ < 0.0 or self.threshold_ > 1.0:
-            raise ValueError(
-                f"Invalid threshold parameter: got '{self.threshold}' "
-                f"instead of a float between 0.0 and 1.0"
-            )
 
         # C++ uses numerical values instead of None for defaults
         self.beta_ = 0.0 if self.beta is None else self.beta
@@ -156,6 +136,45 @@ class CTRWfractal:
         self.random_seed_ = -1 if self.random_seed is None else self.random_seed
         self.n_jobs_ = 0 if self.n_jobs is None else self.n_jobs
 
+        # Check lattice & walk types are supported
+        if self.lattice_type_ is None:
+            raise ValueError(
+                f"Invalid lattice_type parameter: got '{self.lattice_type}' "
+                f"instead of one of {lattice_types.keys()}"
+            )
+
+        if self.walk_type_ is None:
+            raise ValueError(
+                f"Invalid walk_type parameter: got '{self.walk_type}' "
+                f"instead of one of {walk_types.keys()}"
+            )
+
+        # Check parameter ranges
+        if self.threshold_ < 0.0 or self.threshold_ > 1.0:
+            raise ValueError(
+                f"Invalid threshold parameter: got '{self.threshold_}' "
+                f"instead of a float between 0.0 and 1.0"
+            )
+
+        if self.beta_ < 0.0:
+            raise ValueError(
+                f"Invalid beta parameter: got '{self.beta_}' "
+                f"instead of a float >= 0.0"
+            )
+
+        if self.tau0_ < 0.0:
+            raise ValueError(
+                f"Invalid tau0 parameter: got '{self.tau0_}' "
+                f"instead of a float >= 0.0"
+            )
+
+        if self.noise_ < 0.0:
+            raise ValueError(
+                f"Invalid noise parameter: got '{self.noise_}' "
+                f"instead of a float >= 0.0"
+            )
+
+        # Now we can safely call the C++ function
         res = ctrw_fractal(
             grid_size=self.grid_size,
             n_walks=self.n_walks,
