@@ -138,7 +138,7 @@ cdef np.ndarray[np.double_t, ndim=3] numpy_from_cube_d(Cube[double] &m) except +
 
 
 cdef extern from "_ctrw.hpp":
-    cdef uint64_t c_ctrw "CTRWwrapper"[T] (Mat[T] &, Col[int64_t] &, Mat[T] &, Cube[T] &,
+    cdef uint64_t c_ctrw "CTRWwrapper"[T] (Col[int64_t] &, Mat[T] &, Mat[T] &, Cube[T] &,
                                            uint64_t, uint64_t, double,
                                            uint64_t, uint64_t, uint64_t,
                                            double, double, double,
@@ -147,7 +147,7 @@ cdef extern from "_ctrw.hpp":
 
 def ctrw_fractal_double(uint64_t grid_size = 32,
                         uint64_t lattice_type = 0,
-                        double threshold = -1.0,
+                        double threshold = 0.0,
                         uint64_t walk_type = 0,
                         uint64_t n_walks = 0,
                         uint64_t n_steps = 0,
@@ -174,8 +174,8 @@ def ctrw_fractal_double(uint64_t grid_size = 32,
     _analysis = Mat[double]()
     _walks = Cube[double]()
 
-    result = c_ctrw[double](_lattice,
-                            _clusters,
+    result = c_ctrw[double]( _clusters,
+                            _lattice,
                             _analysis,
                             _walks,
                             grid_size,
@@ -195,5 +195,5 @@ def ctrw_fractal_double(uint64_t grid_size = 32,
     analysis = numpy_from_mat_d(_analysis)
     walks = numpy_from_cube_d(_walks)
 
-    return lattice, clusters, analysis, walks, result
+    return clusters, lattice, walks, analysis, result
 

@@ -30,13 +30,6 @@
 #include <utility>
 #include <armadillo>
 
-inline double SquaredDist(const double &x1, const double &x2, const double &y1, const double &y2)
-{
-    double a = (x1 - x2);
-    double b = (y1 - y2);
-    return a * a + b * b;
-}
-
 template <typename Arg, typename... Args>
 void Print(std::ostream &out, Arg &&arg, Args &&... args)
 {

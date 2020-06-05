@@ -122,7 +122,7 @@ public:
     walksCoords.reset();
   };
 
-  void Initialize()
+  void FindNeighbours()
   {
     t0 = GetTime();
     PrintFixed(0, "Searching neighbours...    ");
@@ -158,9 +158,6 @@ public:
       break;
     }
 
-    t1 = GetTime();
-    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
-
     EMPTY = (-1 * static_cast<int64_t>(N) - 1); // Define empty index
     lattice.set_size(N);                        // Set array sizes
     occupation.set_size(N);
@@ -175,199 +172,155 @@ public:
     {
       analysis.set_size(0, 0);
       walksCoords.set_size(0, 0, 0);
-    }
-  }
-
-  void Run()
-  {
-
-    PrintFixed(0, "Randomizing occupations... ");
-    t0 = GetTime();
-
-    Permutation(); // Randomize the order in which the sites are occupied
-
-    t1 = GetTime();
-    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
-
-    PrintFixed(0, "Running percolation...     ");
-    t0 = GetTime();
-
-    Percolate(); // Run the percolation algorithm
-
-    t1 = GetTime();
-    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
-
-    PrintFixed(0, "Building lattice...        ");
-    t0 = GetTime();
-
-    BuildLattice(); // Build the lattice coordinates
-
-    t1 = GetTime();
-    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
-
-    if (includeWalks)
-    {
-      PrintFixed(0, "Simulating random walks... ");
-      t0 = GetTime();
-
-      RandomWalks(); // Run the random walks
-
-      t1 = GetTime();
-      PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
-
-      if (noise > 0.0)
-      {
-        PrintFixed(0, "Adding noise...            ");
-        t0 = GetTime();
-
-        AddNoise(); // Add noise to walk
-
-        t1 = GetTime();
-        PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
-      }
-
-      PrintFixed(0, "Analysing random walks...  ");
-      t0 = GetTime();
-
-      AnalyseWalks(); // Calculate statistics for walks
-
-      t1 = GetTime();
-      PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
-    }
-    else
-    {
       analysis.zeros();
       walksCoords.zeros();
     }
+
+    t1 = GetTime();
+    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
   }
 
-  bool includeWalks;
-  arma::Col<int64_t> lattice;
-  arma::Mat<T> latticeCoords, analysis;
-  arma::Cube<T> walksCoords;
-
-private:
-  uint64_t gridSize, latticeType;
-  double threshold;
-  uint64_t walkType, nWalks, nSteps;
-  double beta, tau0, noise;
-  int64_t randomSeed, nJobs;
-
-  uint64_t N, simLength;
-  int64_t EMPTY;
-  uint8_t neighbourCount;
-
-  const double sqrt3 = 1.7320508075688772;
-  const double sqrt3o2 = 0.8660254037844386;
-
-  const uint32_t maxSites = 4294967294;      // Max uint32_t
-  const double permConstant = 2.3283064e-10; // Equal to 1 / maxSites (max uint32_t)
-
-  arma::ivec occupation, walks, trueWalks, firstRow, lastRow, latticeOnes;
-  arma::imat nn;
-  arma::Col<T> unitCell, ctrwTimes, eaMSD, eataMSD, ergodicity;
-  arma::Mat<T> eaMSDall, eataMSDall, taMSD;
-
-  pcg64 RNG;
-  std::uniform_int_distribution<uint32_t> UniformDistribution{0, maxSites};
-  std::chrono::high_resolution_clock::time_point t0, t1;
-
-  void AnalyseWalks()
+  void Permute()
   {
-    eaMSD.zeros(); // Zero the placeholders
-    eaMSDall.zeros();
-    taMSD.zeros();
-    eataMSD.zeros();
-    eataMSDall.zeros();
-    ergodicity.zeros();
+    PrintFixed(0, "Randomizing occupations... ");
+    t0 = GetTime();
 
-    // For long walks / lots of walks, the analysis is the bottleneck,
-    // so we parallelize over nJobs using threading.
+    int64_t j, t_;
 
-    auto &&func = [&](uint64_t i) {
-      arma::vec::fixed<2> walkOrigin, walkStep;
-      walkOrigin = walksCoords.slice(i).col(0);
-      for (size_t j = 1; j < nSteps; j++)
+    occupation = arma::regspace<arma::ivec>(0, N - 1);
+
+    for (size_t i = 0; i < N; i++)
+    {
+      j = i + (N - i) * permConstant * UniformDistribution(RNG);
+      t_ = occupation(i);
+      occupation(i) = occupation(j);
+      occupation(j) = t_;
+    }
+
+    t1 = GetTime();
+    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
+  }
+
+  void Percolate()
+  {
+    PrintFixed(0, "Running percolation...     ");
+    t0 = GetTime();
+
+    int64_t s1, s2;
+    int64_t r1, r2;
+    int64_t big = 0;
+
+    lattice.fill(EMPTY);
+
+    for (uint64_t i = 0; i < (threshold * N) - 1; i++)
+    {
+      r1 = s1 = occupation[i];
+      lattice(s1) = -1;
+      for (size_t j = 0; j < neighbourCount; j++)
       {
-        walkStep = walksCoords.slice(i).col(j);
-        eaMSDall(j - 1, i) = SquaredDist(walkStep(0), walkOrigin(0),
-                                         walkStep(1), walkOrigin(1)); // Ensemble-average MSD
-        taMSD(j - 1, i) = TAMSD(walksCoords.slice(i), nSteps, j);     // Time-average MSD
-        eataMSDall(j - 1, i) = TAMSD(walksCoords.slice(i), j, 1);     // Ensemble-time-average MSD
+        s2 = nn(j, s1);
+        if (lattice(s2) != EMPTY)
+        {
+          r2 = FindRoot(s2);
+          if (r2 != r1)
+          {
+            if (lattice(r1) > lattice(r2))
+            {
+              lattice(r2) += lattice(r1);
+              lattice(r1) = r2;
+              r1 = r2;
+            }
+            else
+            {
+              lattice(r1) += lattice(r2);
+              lattice(r2) = r1;
+            }
+            if (-lattice(r1) > big)
+            {
+              big = -lattice(r1);
+            }
+          }
+        }
       }
-    };
+    }
 
-    parallel(func, static_cast<uint64_t>(0), static_cast<uint64_t>(nWalks), nJobs);
-
-    eaMSD.elem(arma::find_nonfinite(eaMSD)).zeros(); // Check for NaNs
-    taMSD.elem(arma::find_nonfinite(taMSD)).zeros();
-    eaMSDall.elem(arma::find_nonfinite(eataMSDall)).zeros();
-
-    eaMSD = arma::mean(eaMSDall, 1); // Take means
-    eataMSD = arma::mean(eataMSDall, 1);
-
-    eataMSD.elem(arma::find_nonfinite(eataMSD)).zeros(); //  Check for NaNs
-
-    // Ergodicity breaking over s
-    arma::mat meanTAMSD = arma::square(arma::mean(taMSD, 1));
-    arma::mat meanTAMSD2 = arma::mean(arma::square(taMSD), 1);
-    ergodicity = (meanTAMSD2 - meanTAMSD) / meanTAMSD;
-    ergodicity.elem(arma::find_nonfinite(ergodicity)).zeros();
-    ergodicity /= arma::regspace<arma::vec>(1, nSteps - 1);
-    ergodicity.elem(arma::find_nonfinite(ergodicity)).zeros();
-
-    analysis.col(0) = eaMSD;
-    analysis.col(1) = eataMSD;
-    analysis.col(2) = ergodicity;
-    analysis.cols(3, nWalks + 2) = taMSD;
+    t1 = GetTime();
+    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
   }
 
-  double TAMSD(const arma::mat &walk, const uint64_t t, const uint64_t delta)
+  void BuildLattice()
   {
-    double integral = 0.;
-    uint64_t diff = t - delta;
-    for (size_t i = 0; i < diff; i++)
-    {
-      integral += SquaredDist(walk(0, i + delta), walk(0, i), walk(1, i + delta), walk(1, i));
-    }
-    return integral / diff;
-  }
+    PrintFixed(0, "Building lattice...        ");
+    t0 = GetTime();
 
-  void AddNoise()
-  {
-    arma::cube noiseCube(size(walksCoords));
-    std::normal_distribution<double> NormalDistribution(0, noise);
-    noiseCube.imbue([&]() { return NormalDistribution(RNG); });
-    walksCoords += noiseCube;
-  }
-
-  void PossibleStartPoints()
-  {
-    // Set up selection of random start point
-    //  - walkType = 1 : on largest cluster, or
-    //  - walkType = 0 : on ALL clusters
-
-    if (walkType == 1)
+    if (latticeType == 1) // Populate the honeycomb lattice coordinates
     {
-      int64_t latticeMin = lattice.elem(find(lattice > EMPTY)).min();
-      arma::uvec idxMin = arma::find(lattice == latticeMin);
-      arma::uvec largestCluster = arma::find(lattice == idxMin(0));
-      uint64_t largestClusterSize = largestCluster.n_elem;
-      largestClusterSize++;
-      largestCluster.resize(largestClusterSize);
-      largestCluster(largestClusterSize - 1) = idxMin(0);
-      latticeOnes = arma::regspace<arma::ivec>(0, N - 1);
-      latticeOnes = latticeOnes.elem(largestCluster);
+      double xx, yy;
+      uint64_t count = 0;
+      uint64_t currentCol = 0;
+
+      for (size_t i = 0; i < 4 * gridSize; i++)
+      {
+        for (int64_t j = static_cast<int64_t>(gridSize - 1); j >= 0; j--)
+        {
+          currentCol = i % 4;
+          switch (currentCol)
+          {
+          case 0:
+          default:
+            xx = 0.25 * i * 3;
+            yy = j * sqrt3 + sqrt3o2;
+            break;
+          case 1:
+            xx = 0.25 * i * 3 + 0.5;
+            yy = j * sqrt3;
+            break;
+          case 2:
+            xx = 0.25 * i * 3 + 1.5;
+            yy = j * sqrt3;
+            break;
+          case 3:
+            xx = 0.25 * i * 3 + 2.0;
+            yy = j * sqrt3 + sqrt3o2;
+            break;
+          }
+          latticeCoords(0, count) = xx;
+          latticeCoords(1, count) = yy;
+          count++;
+        }
+      }
+
+      unitCell = arma::max(latticeCoords, 1); // Get unit cell size
+      unitCell(0) += 1.5;
+      unitCell(1) += sqrt3o2;
     }
-    else
+    else if (latticeType == 0) // Populate the square lattice coordinates
     {
-      latticeOnes = arma::regspace<arma::ivec>(0, N - 1);
-      latticeOnes = latticeOnes.elem(find(lattice != EMPTY));
+      uint64_t count = 0;
+      for (size_t i = 0; i < gridSize; i++)
+      {
+        for (size_t j = 0; j < gridSize; j++)
+        {
+          latticeCoords(0, count) = i;
+          latticeCoords(1, count) = j;
+          count++;
+        }
+      }
+
+      unitCell = arma::max(latticeCoords, 1); // Get unit cell size
+      unitCell(0) += 1;
+      unitCell(1) += 1;
     }
+
+    t1 = GetTime();
+    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
   }
 
   void RandomWalks()
   {
+    PrintFixed(0, "Simulating random walks... ");
+    t0 = GetTime();
+
     PossibleStartPoints(); // Populate start points
 
     std::uniform_int_distribution<uint32_t> RandSample(0, static_cast<uint32_t>(latticeOnes.n_elem) - 1);
@@ -500,67 +453,159 @@ private:
         walksCoords(1, n, i) = latticeCoords(1, trueWalks(n)) + nyCell * unitCell(1);
       }
     }
+
+    t1 = GetTime();
+    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
   }
 
-  void BuildLattice()
+  void AnalyseWalks()
   {
-    if (latticeType == 1) // Populate the honeycomb lattice coordinates
-    {
-      double xx, yy;
-      uint64_t count = 0;
-      uint64_t currentCol = 0;
+    PrintFixed(0, "Analysing random walks...  ");
+    t0 = GetTime();
 
-      for (size_t i = 0; i < 4 * gridSize; i++)
+    eaMSD.zeros(); // Zero the placeholders
+    eaMSDall.zeros();
+    taMSD.zeros();
+    eataMSD.zeros();
+    eataMSDall.zeros();
+    ergodicity.zeros();
+
+    // For long walks / lots of walks, the analysis is the bottleneck,
+    // so we parallelize over nJobs using threading.
+
+    auto &&func = [&](uint64_t i) {
+      arma::vec::fixed<2> walkOrigin, walkStep;
+      walkOrigin = walksCoords.slice(i).col(0);
+      for (size_t j = 1; j < nSteps; j++)
       {
-        for (int64_t j = static_cast<int64_t>(gridSize - 1); j >= 0; j--)
-        {
-          currentCol = i % 4;
-          switch (currentCol)
-          {
-          case 0:
-          default:
-            xx = 0.25 * i * 3;
-            yy = j * sqrt3 + sqrt3o2;
-            break;
-          case 1:
-            xx = 0.25 * i * 3 + 0.5;
-            yy = j * sqrt3;
-            break;
-          case 2:
-            xx = 0.25 * i * 3 + 1.5;
-            yy = j * sqrt3;
-            break;
-          case 3:
-            xx = 0.25 * i * 3 + 2.0;
-            yy = j * sqrt3 + sqrt3o2;
-            break;
-          }
-          latticeCoords(0, count) = xx;
-          latticeCoords(1, count) = yy;
-          count++;
-        }
+        walkStep = walksCoords.slice(i).col(j);
+        eaMSDall(j - 1, i) = SquaredDist(walkStep(0), walkOrigin(0),
+                                         walkStep(1), walkOrigin(1)); // Ensemble-average MSD
+        taMSD(j - 1, i) = TAMSD(walksCoords.slice(i), nSteps, j);     // Time-average MSD
+        eataMSDall(j - 1, i) = TAMSD(walksCoords.slice(i), j, 1);     // Ensemble-time-average MSD
       }
+    };
 
-      unitCell = arma::max(latticeCoords, 1); // Get unit cell size
-      unitCell(0) += 1.5;
-      unitCell(1) += sqrt3o2;
+    parallel(func, static_cast<uint64_t>(0), static_cast<uint64_t>(nWalks), nJobs);
+
+    eaMSD.elem(arma::find_nonfinite(eaMSD)).zeros(); // Check for NaNs
+    taMSD.elem(arma::find_nonfinite(taMSD)).zeros();
+    eaMSDall.elem(arma::find_nonfinite(eataMSDall)).zeros();
+
+    eaMSD = arma::mean(eaMSDall, 1); // Take means
+    eataMSD = arma::mean(eataMSDall, 1);
+
+    eataMSD.elem(arma::find_nonfinite(eataMSD)).zeros(); //  Check for NaNs
+
+    arma::mat meanTAMSD = arma::square(arma::mean(taMSD, 1));
+    arma::mat meanTAMSD2 = arma::mean(arma::square(taMSD), 1);
+
+    ergodicity = (meanTAMSD2 - meanTAMSD) / meanTAMSD; // Ergodicity breaking over s
+    ergodicity.elem(arma::find_nonfinite(ergodicity)).zeros();
+    ergodicity /= arma::regspace<arma::vec>(1, nSteps - 1);
+    ergodicity.elem(arma::find_nonfinite(ergodicity)).zeros();
+
+    analysis.col(0) = eaMSD;
+    analysis.col(1) = eataMSD;
+    analysis.col(2) = ergodicity;
+    analysis.cols(3, nWalks + 2) = taMSD;
+
+    t1 = GetTime();
+    PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
+  }
+
+  void AddNoise()
+  {
+    if (noise > 0.0)
+    {
+      PrintFixed(0, "Adding noise...            ");
+      t0 = GetTime();
+
+      arma::cube noiseCube(size(walksCoords));
+      std::normal_distribution<double> NormalDistribution(0, noise);
+      noiseCube.imbue([&]() { return NormalDistribution(RNG); });
+      walksCoords += noiseCube;
+
+      t1 = GetTime();
+      PrintFixed(6, ElapsedSeconds(t0, t1), " s\n");
     }
-    else if (latticeType == 0) // Populate the square lattice coordinates
-    {
-      uint64_t count = 0;
-      for (size_t i = 0; i < gridSize; i++)
-      {
-        for (size_t j = 0; j < gridSize; j++)
-        {
-          latticeCoords(0, count) = i;
-          latticeCoords(1, count) = j;
-          count++;
-        }
-      }
+  }
 
-      unitCell = arma::max(latticeCoords, 1); // Get unit cell size
-      unitCell(0) += 1;
-      unitCell(1) += 1;
+  bool includeWalks;
+  arma::Col<int64_t> lattice;
+  arma::Mat<T> latticeCoords, analysis;
+  arma::Cube<T> walksCoords;
+
+private:
+  uint64_t gridSize, latticeType;
+  double threshold;
+  uint64_t walkType, nWalks, nSteps;
+  double beta, tau0, noise;
+  int64_t randomSeed, nJobs;
+
+  uint64_t N, simLength;
+  int64_t EMPTY;
+  uint8_t neighbourCount;
+
+  const double sqrt3 = 1.7320508075688772;
+  const double sqrt3o2 = 0.8660254037844386;
+
+  const uint32_t maxSites = 4294967294;      // Max uint32_t
+  const double permConstant = 2.3283064e-10; // Equal to 1 / maxSites (max uint32_t)
+
+  arma::ivec occupation, walks, trueWalks, firstRow, lastRow, latticeOnes;
+  arma::imat nn;
+  arma::Col<T> unitCell, ctrwTimes, eaMSD, eataMSD, ergodicity;
+  arma::Mat<T> eaMSDall, eataMSDall, taMSD;
+
+  pcg64 RNG;
+  std::uniform_int_distribution<uint32_t> UniformDistribution{0, maxSites};
+  std::chrono::high_resolution_clock::time_point t0, t1;
+
+  inline double SquaredDist(const double &x1, const double &x2,
+                            const double &y1, const double &y2)
+  {
+    double a = (x1 - x2);
+    double b = (y1 - y2);
+    return a * a + b * b;
+  }
+
+  inline double TAMSD(const arma::mat &walk, const uint64_t t, const uint64_t delta)
+  {
+    double integral = 0.;
+    uint64_t diff = t - delta;
+
+    for (size_t i = 0; i < diff; i++)
+    {
+      integral += SquaredDist(walk(0, i + delta), walk(0, i),
+                              walk(1, i + delta), walk(1, i));
+    }
+
+    return integral / diff;
+  };
+
+  void PossibleStartPoints()
+  {
+    // Set up selection of random start point
+    //  - walkType = 1 : on largest cluster, or
+    //  - walkType = 0 : on ALL clusters
+
+    if (walkType == 1)
+    {
+      int64_t latticeMin = lattice.elem(find(lattice > EMPTY)).min();
+      arma::uvec idxMin = arma::find(lattice == latticeMin);
+      arma::uvec largestCluster = arma::find(lattice == idxMin(0));
+      uint64_t largestClusterSize = largestCluster.n_elem;
+      largestClusterSize++;
+      largestCluster.resize(largestClusterSize);
+      largestCluster(largestClusterSize - 1) = idxMin(0);
+      latticeOnes = arma::regspace<arma::ivec>(0, N - 1);
+      latticeOnes = latticeOnes.elem(largestCluster);
+    }
+    else
+    {
+      latticeOnes = arma::regspace<arma::ivec>(0, N - 1);
+      latticeOnes = latticeOnes.elem(find(lattice != EMPTY));
     }
   }
 
@@ -576,72 +621,16 @@ private:
 
     neighbours = neighbours.elem(find(checkNeighbour == 1));
     return neighbours;
-  }
+  };
 
-  void Permutation()
-  {
-    int64_t j, t_;
-
-    occupation = arma::regspace<arma::ivec>(0, N - 1);
-
-    for (size_t i = 0; i < N; i++)
-    {
-      j = i + (N - i) * permConstant * UniformDistribution(RNG);
-      t_ = occupation(i);
-      occupation(i) = occupation(j);
-      occupation(j) = t_;
-    }
-  }
-
-  int64_t FindRoot(const int64_t i)
+  inline int64_t FindRoot(const int64_t i)
   {
     if (lattice(i) < 0)
     {
       return i;
     }
     return lattice(i) = FindRoot(lattice(i));
-  }
-
-  void Percolate()
-  {
-    int64_t s1, s2;
-    int64_t r1, r2;
-    int64_t big = 0;
-
-    lattice.fill(EMPTY);
-
-    for (uint64_t i = 0; i < (threshold * N) - 1; i++)
-    {
-      r1 = s1 = occupation[i];
-      lattice(s1) = -1;
-      for (size_t j = 0; j < neighbourCount; j++)
-      {
-        s2 = nn(j, s1);
-        if (lattice(s2) != EMPTY)
-        {
-          r2 = FindRoot(s2);
-          if (r2 != r1)
-          {
-            if (lattice(r1) > lattice(r2))
-            {
-              lattice(r2) += lattice(r1);
-              lattice(r1) = r2;
-              r1 = r2;
-            }
-            else
-            {
-              lattice(r1) += lattice(r2);
-              lattice(r2) = r1;
-            }
-            if (-lattice(r1) > big)
-            {
-              big = -lattice(r1);
-            }
-          }
-        }
-      }
-    }
-  }
+  };
 
   // Nearest neighbours of a honeycomb lattice with
   // periodic boundary conditions
@@ -752,7 +741,7 @@ private:
         currentCol = count % 4;
       }
     }
-  }
+  };
 
   // Nearest neighbours of a square lattice
   // with periodic boundary conditions
@@ -773,13 +762,13 @@ private:
         nn(0, i) = i - gridSize + 1;
       }
     }
-  }
+  };
 };
 
 template <typename T>
 uint64_t CTRWwrapper(
-    arma::Mat<T> &lattice,
     arma::Col<int64_t> &clusters,
+    arma::Mat<T> &lattice,
     arma::Mat<T> &analysis,
     arma::Cube<T> &walks,
     const uint64_t gridSize,
@@ -807,8 +796,17 @@ uint64_t CTRWwrapper(
       randomSeed,
       nJobs);
 
-  sim->Initialize();
-  sim->Run();
+  sim->FindNeighbours(); // Identify neighbouring sites
+  sim->Permute();        // Randomize the order in which the sites are occupied
+  sim->Percolate();      // Run the percolation algorithm
+  sim->BuildLattice();   // Build the lattice coordinates
+
+  if (sim->includeWalks)
+  {
+    sim->RandomWalks();  // Run the random walks
+    sim->AddNoise();     // Add noise to walks
+    sim->AnalyseWalks(); // Calculate statistics for walks
+  }
 
   lattice = sim->latticeCoords;
   clusters = sim->lattice;
