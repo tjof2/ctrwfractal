@@ -31,6 +31,7 @@ extensions = [
             "-O3",
             "-fPIC",
             "-Wall",
+            "-Wextra",
             "-pthread",
             "-std=c++11",
             "-march=native",

@@ -18,7 +18,7 @@
   along with ctrwfractal.  If not, see <http://www.gnu.org/licenses/>.
 
   Percolation clusters developed from C code by Mark Newman.
-  http://www-personal.umich.edu/~mejn/percolation/
+  http://www-personal.umich.edu/~mejn/percolation/. See the paper:
   "A fast Monte Carlo algorithm for site or bond percolation"
   M. E. J. Newman and R. M. Ziff, Phys. Rev. E 64, 016706 (2001).
 
@@ -132,9 +132,11 @@ public:
     case 1:
       neighbourCount = 3;
       N = 4 * gridSize * gridSize;
+
       nn.set_size(neighbourCount, N);
       firstRow.set_size(2 * gridSize);
       lastRow.set_size(2 * gridSize);
+
       for (size_t i = 1; i <= 2 * gridSize; i++)
       {
         firstRow(i - 1) = 1 - 0.5 * (3 * gridSize) + 0.5 * (std::pow(-1, i) * gridSize) + 2 * i * gridSize - 1;
@@ -146,9 +148,11 @@ public:
     default:
       neighbourCount = 4;
       N = gridSize * gridSize;
+
       nn.set_size(neighbourCount, N);
       firstRow.set_size(gridSize);
       lastRow.set_size(gridSize);
+
       for (size_t i = 1; i <= gridSize; i++)
       {
         firstRow(i - 1) = (i - 1) * gridSize - 1;
@@ -253,11 +257,14 @@ public:
     PrintFixed(0, "Building lattice...        ");
     t0 = GetTime();
 
-    if (latticeType == 1) // Populate the honeycomb lattice coordinates
+    uint64_t count;
+
+    switch (latticeType)
     {
+    case 1: // Populate honeycomb lattice coordinates
       double xx, yy;
-      uint64_t count = 0;
       uint64_t currentCol, xOffset, yOffset;
+      count = 0;
 
       for (size_t i = 0; i < 4 * gridSize; i++)
       {
@@ -296,10 +303,11 @@ public:
       unitCell = arma::max(latticeCoords, 1); // Get unit cell size
       unitCell(0) += 1.5;
       unitCell(1) += sqrt3o2;
-    }
-    else if (latticeType == 0) // Populate the square lattice coordinates
-    {
-      uint64_t count = 0;
+      break;
+    case 0: // Populate square lattice coordinates
+    default:
+      count = 0;
+
       for (size_t i = 0; i < gridSize; i++)
       {
         for (size_t j = 0; j < gridSize; j++)
@@ -313,6 +321,7 @@ public:
       unitCell = arma::max(latticeCoords, 1); // Get unit cell size
       unitCell(0) += 1;
       unitCell(1) += 1;
+      break;
     }
 
     t1 = GetTime();
@@ -565,6 +574,15 @@ private:
   std::uniform_int_distribution<uint32_t> UniformDistribution{0, maxSites};
   std::chrono::high_resolution_clock::time_point t0, t1;
 
+  inline int64_t FindRoot(const int64_t i)
+  {
+    if (lattice(i) < 0)
+    {
+      return i;
+    }
+    return lattice(i) = FindRoot(lattice(i));
+  };
+
   inline double SquaredDist(const double &x1, const double &x2,
                             const double &y1, const double &y2)
   {
@@ -589,25 +607,23 @@ private:
 
   void PossibleStartPoints()
   {
+    latticeOnes = arma::regspace<arma::ivec>(0, N - 1);
+
     // Set up selection of random start point
     //  - walkType = 1 : on largest cluster, or
     //  - walkType = 0 : on ALL clusters
-
     if (walkType == 1)
     {
       int64_t latticeMin = lattice.elem(find(lattice > EMPTY)).min();
       arma::uvec idxMin = arma::find(lattice == latticeMin);
       arma::uvec largestCluster = arma::find(lattice == idxMin(0));
-      uint64_t largestClusterSize = largestCluster.n_elem;
-      largestClusterSize++;
+      uint64_t largestClusterSize = largestCluster.n_elem + 1;
       largestCluster.resize(largestClusterSize);
       largestCluster(largestClusterSize - 1) = idxMin(0);
-      latticeOnes = arma::regspace<arma::ivec>(0, N - 1);
       latticeOnes = latticeOnes.elem(largestCluster);
     }
     else
     {
-      latticeOnes = arma::regspace<arma::ivec>(0, N - 1);
       latticeOnes = latticeOnes.elem(find(lattice != EMPTY));
     }
   }
@@ -622,23 +638,12 @@ private:
       checkNeighbour(k) = (lattice(neighbours(k)) == EMPTY) ? 0 : 1;
     }
 
-    neighbours = neighbours.elem(find(checkNeighbour == 1));
-    return neighbours;
+    return neighbours.elem(find(checkNeighbour == 1));
   };
 
-  inline int64_t FindRoot(const int64_t i)
-  {
-    if (lattice(i) < 0)
-    {
-      return i;
-    }
-    return lattice(i) = FindRoot(lattice(i));
-  };
-
-  // Nearest neighbours of a honeycomb lattice with
-  // periodic boundary conditions
   void BoundariesHoneycomb()
   {
+    // Honeycomb lattice nearest neighbours with periodic boundary conditions
     uint64_t currentCol = 0;
     uint64_t count = 0;
 
@@ -721,7 +726,6 @@ private:
           }
           break;
         case 3:
-
           if (arma::any(firstRow == i)) // First row
           {
             nn(0, i) = i - 1;
@@ -746,10 +750,9 @@ private:
     }
   };
 
-  // Nearest neighbours of a square lattice
-  // with periodic boundary conditions
   void BoundariesSquare()
   {
+    // Square lattice nearest neighbours with periodic boundary conditions
     for (size_t i = 0; i < N; i++)
     {
       nn(0, i) = (i + 1) % N;
@@ -816,7 +819,7 @@ uint64_t CTRWwrapper(
   analysis = sim->analysis;
   walks = sim->walksCoords;
 
-  if (sim->includeWalks) // Remember Armadillo is Fortran-contiguous, numpy is C-contiguous
+  if (sim->includeWalks) // Armadillo is Fortran-contiguous, numpy is C-contiguous
   {
     arma::inplace_trans(lattice);
     arma::inplace_trans(analysis);
