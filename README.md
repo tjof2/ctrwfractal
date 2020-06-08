@@ -6,13 +6,15 @@
 
 **Modelling continuous-time random walks on fractal percolation clusters**
 
-More information on the algorithm can be found [in our paper](https://dx.doi.org/10.1016/j.cplett.2017.04.071) in *Chemical Physics Letters*.
+This code implements the hybrid model for spatial and temporal disorder on graphene oxide, as described in [in our paper](https://dx.doi.org/10.1016/j.cplett.2017.04.071) in *Chemical Physics Letters*.
 
-ctrwfractal is released free of charge under the GNU General Public License ([GPLv3](http://tjof2.github.io/pgure-svt/www.gnu.org/licenses/gpl-3.0.en.html)).
+In site percolation on a regular 2D lattice, each site is occupied with probability _p_. Spatial disorder is incorporated as intermediate values of _p_, where clusters of accessible sites will exhibit fractal-like characteristics. Particles undertaking random walks on such clusters will exhibit _anomalous_ diffusion. Our hybrid model extends this diffusive behaviour using the theory of continuous-time random walks (CTRW), where the waiting times between jumps are drawn from a power-law distribution.
 
 If you use this code in a publication, please cite our work:
 
-> T. Furnival, R. K. Leary, E. C. Tyo, S. Vajda, Q. M. Ramasse, J. M. Thomas, P. D. Bristowe and P. A. Midgley, "Anomalous diffusion of single metal atoms on a graphene oxide support", *Chem. Phys. Lett.*, vol. 683, pp. 370–374, 2017. DOI:[10.1016/j.cplett.2017.04.07](https://dx.doi.org/10.1016/j.cplett.2017.04.071)
+> T. Furnival, R. K. Leary, E. C. Tyo, S. Vajda, Q. M. Ramasse, J. M. Thomas, P. D. Bristowe and P. A. Midgley, "Anomalous diffusion of single metal atoms on a graphene oxide support", *Chem. Phys. Lett.*, vol. 683, pp. 370–374, 2017. DOI:[10.1016/j.cplett.2017.04.07](https://dx.doi.org/10.1016/j.cplett.2017.04.071).
+
+ctrwfractal is released free of charge under the GNU General Public License ([GPLv3](http://tjof2.github.io/pgure-svt/www.gnu.org/licenses/gpl-3.0.en.html)).
 
 ## Installation
 
@@ -57,6 +59,6 @@ est.run()
 #   est.analysis_
 ```
 
-Both square and honeycomb (i.e. graphene) lattices are supported. The percolation clusters are generated using the periodic algorithm from *[A fast Monte Carlo algorithm for site or bond percolation](http://aps.arxiv.org/abs/cond-mat/0101295/), M. E. J. Newman and R. M. Ziff, Phys. Rev. E 64, 016706 (2001).*
+Both square and honeycomb (i.e. graphene) lattices are supported. The percolation clusters are generated using the periodic algorithm described in *[A fast Monte Carlo algorithm for site or bond percolation](http://aps.arxiv.org/abs/cond-mat/0101295/), M. E. J. Newman and R. M. Ziff, Phys. Rev. E 64, 016706 (2001).*
 
 Copyright (C) 2016-2020 Tom Furnival.
