@@ -6,7 +6,7 @@
 
 **Modelling continuous-time random walks on fractal percolation clusters**
 
-This code implements the hybrid model for spatial and temporal disorder on graphene oxide, as described in [in our paper](https://dx.doi.org/10.1016/j.cplett.2017.04.071) in *Chemical Physics Letters*.
+This code implements the hybrid model for spatial and temporal disorder on graphene oxide, as described in [our paper](https://dx.doi.org/10.1016/j.cplett.2017.04.071) in *Chemical Physics Letters*.
 
 In site percolation on a regular 2D lattice, each site is occupied with probability _p_. Spatial disorder is incorporated as intermediate values of _p_, where clusters of accessible sites will exhibit fractal-like characteristics. Particles undertaking random walks on such clusters will exhibit _anomalous_ diffusion. Our hybrid model extends this diffusive behaviour using the theory of continuous-time random walks (CTRW), where the waiting times between jumps are drawn from a power-law distribution.
 
