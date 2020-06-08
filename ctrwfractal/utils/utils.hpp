@@ -55,6 +55,28 @@ double ElapsedSeconds(std::chrono::high_resolution_clock::time_point t0,
     return static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count() * 1E-6);
 }
 
+inline double SquaredDist(const double &x1, const double &x2,
+                          const double &y1, const double &y2)
+{
+    double a = (x1 - x2);
+    double b = (y1 - y2);
+    return a * a + b * b;
+}
+
+inline double TAMSD(const arma::mat &walk, const uint64_t t, const uint64_t delta)
+{
+    double integral = 0.;
+    uint64_t diff = t - delta;
+
+    for (size_t i = 0; i < diff; i++)
+    {
+        integral += SquaredDist(walk(0, i + delta), walk(0, i),
+                                walk(1, i + delta), walk(1, i));
+    }
+
+    return integral / diff;
+};
+
 template <typename Function, typename Integer_Type>
 void parallel(Function const &func,
               Integer_Type dimFirst,

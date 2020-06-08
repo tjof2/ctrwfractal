@@ -576,33 +576,7 @@ private:
 
   inline int64_t FindRoot(const int64_t i)
   {
-    if (lattice(i) < 0)
-    {
-      return i;
-    }
-    return lattice(i) = FindRoot(lattice(i));
-  };
-
-  inline double SquaredDist(const double &x1, const double &x2,
-                            const double &y1, const double &y2)
-  {
-    double a = (x1 - x2);
-    double b = (y1 - y2);
-    return a * a + b * b;
-  }
-
-  inline double TAMSD(const arma::mat &walk, const uint64_t t, const uint64_t delta)
-  {
-    double integral = 0.;
-    uint64_t diff = t - delta;
-
-    for (size_t i = 0; i < diff; i++)
-    {
-      integral += SquaredDist(walk(0, i + delta), walk(0, i),
-                              walk(1, i + delta), walk(1, i));
-    }
-
-    return integral / diff;
+    return (lattice(i) < 0) ? i : lattice(i) = FindRoot(lattice(i));
   };
 
   void PossibleStartPoints()
