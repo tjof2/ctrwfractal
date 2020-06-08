@@ -78,6 +78,7 @@ class CTRWfractal:
         If ``n_walks``
     analysis_ : None or pandas.DataFrame
         If ``n_walks``
+    occupied_fraction_ : float
 
     Notes
     -----
@@ -225,6 +226,10 @@ class CTRWfractal:
         else:
             self.walks_ = None
             self.analysis_ = None
+
+        self.occupied_fraction_ = (
+            np.sum(self.clusters_ > self.clusters_.min()) / self.clusters_.size
+        )
 
         self._has_run = True
 

@@ -22,10 +22,6 @@ import pytest
 from ctrwfractal import CTRWfractal
 
 
-def _calculate_occupied_sites_fraction(clusters):
-    return np.sum(clusters > clusters.min()) / clusters.size
-
-
 class TestSquare:
     def setup_method(self, method):
         self.seed = 123
@@ -51,9 +47,7 @@ class TestSquare:
         # Check occupied fraction
         expected_threshold = 0.592746 if threshold is None else threshold
         np.testing.assert_allclose(
-            expected_threshold,
-            _calculate_occupied_sites_fraction(est.clusters_),
-            atol=5e-3,
+            expected_threshold, est.occupied_fraction_, atol=5e-3,
         )
 
     @pytest.mark.parametrize("walk_type", ["all", "largest"])
@@ -103,9 +97,7 @@ class TestHoneycomb:
         # Check occupied fraction
         expected_threshold = 0.697040230 if threshold is None else threshold
         np.testing.assert_allclose(
-            expected_threshold,
-            _calculate_occupied_sites_fraction(est.clusters_),
-            atol=5e-3,
+            expected_threshold, est.occupied_fraction_, atol=5e-3,
         )
 
     @pytest.mark.parametrize("walk_type", ["all", "largest"])
