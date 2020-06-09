@@ -22,6 +22,7 @@ ctrwfractal is released free of charge under the GNU General Public License ([GP
 
 ```bash
 $ pip install -U ctrwfractal
+$ pip install git+https://github.com/tjof2/ctrwfractal.git
 ``` -->
 
 #### Building from source
@@ -32,9 +33,9 @@ FAQs](http://arma.sourceforge.net/faq.html#dependencies).
 To build the library from source:
 
 ```bash
-$ tar -xzf ctrwfractal.tar.gz
+$ git clone https://github.com/tjof2/ctrwfractal.git
 $ cd ctrwfractal
-$ sh ./install-dependencies.sh # Optional - this will download, compile and install Armadillo
+$ sh ./install-dependencies.sh # Optional: this will download and install Armadillo
 $ pip install -e .
 ```
 
@@ -47,7 +48,7 @@ from ctrwfractal import CTRWfractal
 est = CTRWfractal(
    grid_size=64,
    lattice_type="square",
-   n_walks=2,
+   n_walks=1,
    n_steps=100,
 )
 est.run()
