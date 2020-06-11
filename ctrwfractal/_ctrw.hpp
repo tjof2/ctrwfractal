@@ -164,6 +164,7 @@ public:
 
     EMPTY = (-1 * static_cast<int64_t>(N) - 1); // Define empty index
     lattice.set_size(N);                        // Set array sizes
+    clusters.set_size(N);
     occupation.set_size(N);
     latticeCoords.set_size(2, N);
 
@@ -543,8 +544,24 @@ public:
     }
   }
 
+  void GroupClusters()
+  {
+    clusters = lattice;
+    int64_t j;
+    for (size_t i = 0; i < N; i++)
+    {
+      PrintFixed(0, i, " ", clusters(i), " ");
+      j = GroupRoot(i);
+      if (clusters(i) >= 0)
+      {
+        clusters(i) = clusters(j);
+      }
+      PrintFixed(0, j, " ", clusters(i), " ", clusters(j), "\n");
+    }
+  }
+
   bool includeWalks;
-  arma::Col<int64_t> lattice;
+  arma::Col<int64_t> lattice, clusters;
   arma::Mat<T> latticeCoords, analysis;
   arma::Cube<T> walksCoords;
 
@@ -579,6 +596,11 @@ private:
     return (lattice(i) < 0) ? i : lattice(i) = FindRoot(lattice(i));
   };
 
+  inline int64_t GroupRoot(const int64_t i)
+  {
+    return (clusters(i) < 0) ? i : clusters(i) = GroupRoot(clusters(i));
+  };
+
   void PossibleStartPoints()
   {
     latticeOnes = arma::regspace<arma::ivec>(0, N - 1);
@@ -600,7 +622,7 @@ private:
     {
       latticeOnes = latticeOnes.elem(find(lattice != EMPTY));
     }
-  }
+  };
 
   arma::ivec GetOccupiedNeighbours(const int64_t pos)
   {
@@ -780,6 +802,7 @@ uint64_t CTRWwrapper(
   sim->Permute();        // Randomize the order in which the sites are occupied
   sim->Percolate();      // Run the percolation algorithm
   sim->BuildLattice();   // Build the lattice coordinates
+  sim->GroupClusters();  // Group clusters by root
 
   if (sim->includeWalks)
   {
@@ -789,7 +812,8 @@ uint64_t CTRWwrapper(
   }
 
   lattice = sim->latticeCoords;
-  clusters = sim->lattice;
+  //clusters = sim->lattice;
+  clusters = sim->clusters;
   analysis = sim->analysis;
   walks = sim->walksCoords;
 

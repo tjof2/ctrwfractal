@@ -18,10 +18,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.cm import get_cmap
 from matplotlib.collections import PatchCollection
-from matplotlib.patches import Circle
+from matplotlib.lines import Line2D
+from matplotlib.patches import Circle, Patch
 
 from ._ctrwfractal import ctrw_fractal
+
+plt.switch_backend("Agg")
 
 
 class CTRWfractal:
@@ -122,25 +126,30 @@ class CTRWfractal:
 
         self._has_run = False
 
-    def _analysis_to_df(self, analysis):
-        columns = ["EnsembleMSD", "EnsembleTimeAveragedMSD", "ErgodicityBreaking"]
-        columns.extend([f"TimeAveragedMSD_Walk{i}" for i in range(self.n_walks_)])
-
-        return pd.DataFrame(analysis, columns=columns)
-
-    def run(self):
-        """
+    def _analysis_to_df(self, analysis, copy=True):
+        """Convert the analysis ndarray to a dataframe.
 
         Parameters
         ----------
-        None
+        analysis : array-like
+            The input data, namely the random walk statistics
+            such as mean-squared displacement.
+        copy : bool, default True
+            If True, copies the array when creating the dataframe.
 
         Returns
         -------
-        self : object
-            Returns the instance itself.
+        pd.DataFrame
+            Random walk statistics with descriptive column names.
 
         """
+        columns = ["EnsembleMSD", "EnsembleTimeAveragedMSD", "ErgodicityBreaking"]
+        columns.extend([f"TimeAveragedMSD_Walk{i}" for i in range(self.n_walks_)])
+
+        return pd.DataFrame(analysis, columns=columns, copy=copy)
+
+    def _check_arguments(self):
+        """Sanity-checking of arguments before calling C++ code."""
         lattice_types = {"square": 0, "honeycomb": 1}
         lattice_thresholds = {"square": 0.592746, "honeycomb": 0.697040230}
         walk_types = {"all": 0, "largest": 1}
@@ -164,7 +173,7 @@ class CTRWfractal:
         self.random_seed_ = -1 if self.random_seed is None else self.random_seed
         self.n_jobs_ = 0 if self.n_jobs is None else self.n_jobs
 
-        # Check lattice & walk types are supported
+        # Check arguments
         if self.lattice_type_ is None:
             raise ValueError(
                 f"Invalid lattice_type parameter: got '{self.lattice_type}' "
@@ -177,7 +186,6 @@ class CTRWfractal:
                 f"instead of one of {walk_types.keys()}"
             )
 
-        # Check parameter ranges
         if self.threshold_ < 0.0 or self.threshold_ > 1.0:
             raise ValueError(
                 f"Invalid threshold parameter: got '{self.threshold_}' "
@@ -201,6 +209,23 @@ class CTRWfractal:
                 f"Invalid noise parameter: got '{self.noise_}' "
                 f"instead of a float >= 0.0"
             )
+
+    def run(self):
+        """Generate the percolation clusters and, if specified, simulate random walks.
+
+        Results are stored in the object attributes.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        self : object
+            Returns the instance itself.
+
+        """
+        self._check_arguments()
 
         # Now we can safely call the C++ function
         res = ctrw_fractal(
