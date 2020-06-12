@@ -37,9 +37,9 @@ class TestSquare:
     @pytest.mark.parametrize(
         "threshold, expected_threshold, expected_clusters_hash",
         [
-            (None, 0.592746, "7f5e0c80"),
-            (0.55, 0.55, "37cd4e13"),
-            (0.65, 0.65, "cc01a103"),
+            (None, 0.592746, "a77f4546"),
+            (0.55, 0.55, "079d302b"),
+            (0.65, 0.65, "e16909db"),
         ],
     )
     def test_square_no_walks(
@@ -103,9 +103,9 @@ class TestHoneycomb:
     @pytest.mark.parametrize(
         "threshold, expected_threshold, expected_clusters_hash",
         [
-            (None, 0.697040230, "f4d56b22"),
-            (0.65, 0.65, "8d0528ba"),
-            (0.75, 0.75, "35bcc465"),
+            (None, 0.697040230, "c24af7ff"),
+            (0.65, 0.65, "9c13bf6b"),
+            (0.75, 0.75, "7d1c6d3d"),
         ],
     )
     def test_honeycomb_no_walks(
