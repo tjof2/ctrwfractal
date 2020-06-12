@@ -550,13 +550,13 @@ public:
     int64_t j;
     for (size_t i = 0; i < N; i++)
     {
-      PrintFixed(0, i, " ", clusters(i), " ");
+      //PrintFixed(0, i, " ", clusters(i), " ");
       j = GroupRoot(i);
       if (clusters(i) >= 0)
       {
         clusters(i) = clusters(j);
       }
-      PrintFixed(0, j, " ", clusters(i), " ", clusters(j), "\n");
+      //PrintFixed(0, j, " ", clusters(i), " ", clusters(j), "\n");
     }
   }
 
