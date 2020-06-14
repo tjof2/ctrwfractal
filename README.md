@@ -30,12 +30,17 @@ $ pip install git+https://github.com/tjof2/ctrwfractal.git
 This library makes use of the **[Armadillo](http://arma.sourceforge.net)** C++ linear algebra library, which needs to be installed first. It is recommended that you use a high-speed replacement for LAPACK and BLAS such as OpenBLAS, MKL or ACML; more information can be found in the [Armadillo
 FAQs](http://arma.sourceforge.net/faq.html#dependencies).
 
-To build the library from source:
+```bash
+$ sudo apt-get install libarmadillo-dev
+# Alternatively, download and build Armadillo from source
+$ sh ./install-dependencies.sh
+```
+
+To build the Python package from source:
 
 ```bash
 $ git clone https://github.com/tjof2/ctrwfractal.git
 $ cd ctrwfractal
-$ sh ./install-dependencies.sh # Optional: this will download and install Armadillo
 $ pip install -e .
 ```
 
@@ -58,6 +63,7 @@ est.run()
 #   est.clusters_
 #   est.walks_
 #   est.analysis_
+#   est.occupied_fraction_
 ```
 
 Both square and honeycomb (i.e. graphene) lattices are supported. The percolation clusters are generated using the periodic algorithm described in *[A fast Monte Carlo algorithm for site or bond percolation](http://aps.arxiv.org/abs/cond-mat/0101295/), M. E. J. Newman and R. M. Ziff, Phys. Rev. E 64, 016706 (2001).*

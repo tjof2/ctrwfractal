@@ -25,14 +25,21 @@ from matplotlib.patches import Circle, Patch
 
 from ._ctrwfractal import ctrw_fractal
 
-plt.switch_backend("Agg")
-
 
 class CTRWfractal:
-    """Continuous-time random walks on 2D percolation clusters.
+    """Continuous-time random walks on 2D site percolation clusters.
 
     The percolation clusters are generated using the periodic algorithm
-    described in [New2001]_.
+    described in [New2001]_. Sites in a 2D lattice are randomly occupied
+    according to a percolation threshold between 0 (all sites unoccupied)
+    and 1 (all sites occupied).
+
+    Continuous-time random walks (CTRW) of a particle on the occupied
+    clusters are carried out using the following power-law distribution
+    of wait times, tau, between consecutive particle jumps:
+
+        P(tau) = 0,                                     if tau < tau0,
+                 (beta * tau0^beta) / (tau^(1 + beta))  otherwise
 
     Parameters
     ----------
@@ -58,31 +65,39 @@ class CTRWfractal:
     n_steps : None or int, default=None
         Length of random walks on the 2D lattice.
     beta : None or float, default=None
-
+        Parameter controlling the power-law distribution.
     tau0 : None or float, default=None
-
+        Characteristic wait time between consecutive jumps in the
+        random walk. If None, a value of 1 time step is used.
     noise : None or float, default=None
         If not None, add zero-mean Gaussian noise to the random walks
-        with standard deviation = ``noise``.
+        with standard deviation=``noise``.
     random_seed : None or int, default=None
-
+        Random seed to use for the cluster generation and random walks.
     n_jobs : None or int, default=None
         The number of threads to use for the random walk analysis, which
-        is performed in parallel over ``n_walks``. None means using a
-        single thread, while -1 means using all threads dependent on the
-        available hardware.
+        is performed in parallel over ``n_walks``. A value of None means
+        using a single thread, while -1 means using all threads dependent
+        on the available hardware.
 
     Attributes
     ----------
     clusters_ : array-like, shape (n_sites,)
-
+        Labelled clusters indicated occupied and unoccupied sites,
+        with distinct clusters uniquely labelled.
     lattice_ : array-like, shape (2, n_sites)
-
+        Physical (x, y) coordinates of the lattice sites in 2D.
     walks_ : None or array-like, shape (n_walks, n_steps, 2)
-        If ``n_walks``
+        If ``n_walks`` is not None, this is an array containing
+        the physical (x, y) coordinates of the particle undergoing
+        a random walk on the occupied sites.
     analysis_ : None or pandas.DataFrame
-        If ``n_walks``
+        If ``n_walks`` is not None, this is a dataframe containing:
+        ensemble mean-squared displacement (MSD), ensemble time-averaged
+        mean-squared displacement (TAMSD), ergodicity-breaking values,
+        and TAMSD for each trajectory.
     occupied_fraction_ : float
+        Fraction of lattice sites marked as occupied.
 
     Notes
     -----
